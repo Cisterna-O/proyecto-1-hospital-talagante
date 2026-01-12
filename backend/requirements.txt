@@ -30,3 +30,7 @@ fastapi-cors
 pytest
 pytest-asyncio
 httpx
+
+#otros
+bcrypt==4.0.1
+passlib
