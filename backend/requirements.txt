@@ -1,0 +1,32 @@
+# Core
+fastapi
+uvicorn[standard]
+python-dotenv
+
+# Database
+sqlalchemy
+psycopg2-binary
+alembic
+
+# Validation
+pydantic
+pydantic-settings
+email-validator
+
+# Authentication
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart
+
+# Data Processing
+pandas
+openpyxl
+python-dateutil
+
+# CORS
+fastapi-cors
+
+# Testing
+pytest
+pytest-asyncio
+httpx
