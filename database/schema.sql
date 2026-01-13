@@ -505,26 +505,26 @@ $$ LANGUAGE plpgsql;
 -- ============================================
 
 -- Usuario administrador de prueba
-INSERT INTO usuarios (rut, nombre, email, password_hash, rol)
-VALUES ('12345678-9', 'Admin Prueba', 'admin@hospital.cl', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5cOW3G9WQ7W4m', 'administrador');
+--INSERT INTO usuarios (rut, nombre, email, password_hash, rol)
+--VALUES ('12345678-9', 'Admin Prueba', 'admin@hospital.cl', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5cOW3G9WQ7W4m', 'administrador');
 -- Password: admin123
 
 -- Usuario ingresador de prueba
-INSERT INTO usuarios (rut, nombre, email, password_hash, rol)
-VALUES ('98765432-1', 'Tecnólogo Prueba', 'tecnologo@hospital.cl', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5cOW3G9WQ7W4m', 'ingresador');
+--INSERT INTO usuarios (rut, nombre, email, password_hash, rol)
+--VALUES ('98765432-1', 'Tecnólogo Prueba', 'tecnologo@hospital.cl', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5cOW3G9WQ7W4m', 'ingresador');
 -- Password: admin123
 
 -- Paciente de prueba
-INSERT INTO pacientes (rut, nombre_completo, fecha_nacimiento)
-VALUES ('11111111-1', 'Juan Pérez González', '1980-05-15');
+--INSERT INTO pacientes (rut, nombre_completo, fecha_nacimiento)
+--VALUES ('11111111-1', 'Juan Pérez González', '1980-05-15');
 
 -- Procedencias comunes
-INSERT INTO procedencias (nombre) VALUES
-('Consulta Externa'),
-('Urgencias'),
-('Hospitalización'),
-('UPC'),
-('Pabellón');
+--INSERT INTO procedencias (nombre) VALUES
+--('Consulta Externa'),
+--('Urgencias'),
+--('Hospitalización'),
+--('UPC'),
+--('Pabellón');
 
 -- Verificación
 SELECT 'Base de datos creada exitosamente' AS status;
