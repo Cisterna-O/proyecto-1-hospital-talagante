@@ -23,7 +23,7 @@ __all__ = [
     "ProtocoloTAC",
     "Diagnostico",
     "PersonalMedico",
-    "ExamenEspecifico"
+    "ExamenEspecifico",
     "ExamenBase",
     "ExamenTAC",
     "ExamenRX",

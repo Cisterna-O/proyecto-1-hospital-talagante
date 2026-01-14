@@ -113,7 +113,7 @@ def login(login_data: LoginRequest, db: Session = Depends(get_db)):
     # Crear token
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": usuario.id, "rol": usuario.rol},
+        data={"sub": str(usuario.id), "rol": usuario.rol},
         expires_delta=access_token_expires
     )
     
@@ -159,7 +159,7 @@ def login_for_access_token(
     
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": usuario.id, "rol": usuario.rol},
+        data={"sub": str(usuario.id), "rol": usuario.rol},
         expires_delta=access_token_expires
     )
     
