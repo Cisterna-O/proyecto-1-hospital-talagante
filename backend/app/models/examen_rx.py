@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Time, ForeignKey
+from sqlalchemy import Column, Integer, ForeignKey, Time
 from sqlalchemy.orm import relationship
 from ..database import Base
 
@@ -10,8 +10,8 @@ class ExamenRX(Base):
     
     # Datos específicos RX
     hora_realizacion = Column(Time, nullable=False)
-    tm_tp_id = Column(Integer, ForeignKey("personal_medico.id"))
+    tm_tp_id = Column(Integer, ForeignKey("personal_medico.id"), nullable=True)
     
     # Relaciones
     examen_base = relationship("ExamenBase", back_populates="examen_rx")
-    tm_tp = relationship("PersonalMedico")
+    tm_tp = relationship("PersonalMedico", foreign_keys=[tm_tp_id])

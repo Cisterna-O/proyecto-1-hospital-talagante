@@ -9,12 +9,12 @@ class ExamenECO(Base):
     examen_base_id = Column(Integer, ForeignKey("examenes_base.id", ondelete="CASCADE"), unique=True, nullable=False)
     
     # Datos específicos ECO
-    diagnostico_id = Column(Integer, ForeignKey("diagnosticos.id"))
-    realizado_id = Column(Integer, ForeignKey("personal_medico.id"))
-    transcribe_id = Column(Integer, ForeignKey("personal_medico.id"))
+    diagnostico_id = Column(Integer, ForeignKey("diagnosticos.id"), nullable=True)
+    realizado_id = Column(Integer, ForeignKey("personal_medico.id"), nullable=True)
+    transcribe_id = Column(Integer, ForeignKey("personal_medico.id"), nullable=True)
     
     # Relaciones
     examen_base = relationship("ExamenBase", back_populates="examen_eco")
-    diagnostico = relationship("Diagnostico", back_populates="examenes_eco")
+    diagnostico = relationship("Diagnostico", foreign_keys=[diagnostico_id])
     realizado = relationship("PersonalMedico", foreign_keys=[realizado_id])
     transcribe = relationship("PersonalMedico", foreign_keys=[transcribe_id])

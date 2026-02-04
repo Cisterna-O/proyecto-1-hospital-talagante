@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, extract, and_
 from typing import List, Optional, Dict, Any
 from datetime import date, datetime
@@ -379,142 +379,247 @@ def resumen_mensual(
 # ============================================
 
 @router.get("/exportar-excel")
-def exportar_respaldo_excel(
+def exportar_excel(
     anio: Optional[int] = None,
     mes: Optional[int] = None,
-    db: Session = Depends(get_db),
-    current_user: Usuario = Depends(require_admin)
+    fecha_inicio: Optional[date] = None,
+    fecha_fin: Optional[date] = None,
+    current_user: Usuario = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     """
-    Exportar todos los exámenes a Excel (solo administrador)
-    
-    Genera un archivo Excel con 3 hojas: TAC, RX, ECO
-    Opcionalmente filtra por año/mes
+    Exporta todos los exámenes a Excel con 3 hojas separadas
     """
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment
+    from io import BytesIO
+    from fastapi.responses import StreamingResponse
     
-    # Query base para cada tipo
-    query_base = db.query(ExamenBase).filter(ExamenBase.deleted_at.is_(None))
+    wb = Workbook()
+    wb.remove(wb.active)
     
+    # Construir query base
+    query_tac = db.query(ExamenBase).join(ExamenTAC).options(
+        joinedload(ExamenBase.paciente),
+        joinedload(ExamenBase.prevision),
+        joinedload(ExamenBase.procedencia),
+        joinedload(ExamenBase.codigo_mai),
+        joinedload(ExamenBase.examen_especifico)
+    ).filter(ExamenBase.tipo_examen == "TAC", ExamenBase.deleted_at.is_(None))
+    
+    query_rx = db.query(ExamenBase).join(ExamenRX).options(
+        joinedload(ExamenBase.paciente),
+        joinedload(ExamenBase.prevision),
+        joinedload(ExamenBase.procedencia),
+        joinedload(ExamenBase.codigo_mai),
+        joinedload(ExamenBase.examen_especifico)
+    ).filter(ExamenBase.tipo_examen == "RX", ExamenBase.deleted_at.is_(None))
+    
+    query_eco = db.query(ExamenBase).join(ExamenECO).options(
+        joinedload(ExamenBase.paciente),
+        joinedload(ExamenBase.prevision),
+        joinedload(ExamenBase.procedencia),
+        joinedload(ExamenBase.codigo_mai),
+        joinedload(ExamenBase.examen_especifico)
+    ).filter(ExamenBase.tipo_examen == "ECO", ExamenBase.deleted_at.is_(None))
+    
+    # Aplicar filtros
     if anio:
-        query_base = query_base.filter(ExamenBase.anio_realizacion == anio)
+        query_tac = query_tac.filter(ExamenBase.anio_realizacion == anio)
+        query_rx = query_rx.filter(ExamenBase.anio_realizacion == anio)
+        query_eco = query_eco.filter(ExamenBase.anio_realizacion == anio)
+    
     if mes:
-        query_base = query_base.filter(ExamenBase.mes_realizacion == mes)
+        query_tac = query_tac.filter(ExamenBase.mes_realizacion == mes)
+        query_rx = query_rx.filter(ExamenBase.mes_realizacion == mes)
+        query_eco = query_eco.filter(ExamenBase.mes_realizacion == mes)
     
-    # ============================================
-    # HOJA 1: TAC
-    # ============================================
-    examenes_tac = query_base.filter(ExamenBase.tipo_examen == "TAC").join(
-        ExamenTAC, ExamenBase.id == ExamenTAC.examen_base_id
-    ).join(
-        Paciente, ExamenBase.paciente_id == Paciente.id
-    ).all()
+    if fecha_inicio:
+        query_tac = query_tac.filter(ExamenBase.fecha_realizacion >= fecha_inicio)
+        query_rx = query_rx.filter(ExamenBase.fecha_realizacion >= fecha_inicio)
+        query_eco = query_eco.filter(ExamenBase.fecha_realizacion >= fecha_inicio)
     
-    data_tac = []
+    if fecha_fin:
+        query_tac = query_tac.filter(ExamenBase.fecha_realizacion <= fecha_fin)
+        query_rx = query_rx.filter(ExamenBase.fecha_realizacion <= fecha_fin)
+        query_eco = query_eco.filter(ExamenBase.fecha_realizacion <= fecha_fin)
+    
+    examenes_tac = query_tac.all()
+    examenes_rx = query_rx.all()
+    examenes_eco = query_eco.all()
+    
+    # Estilos
+    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF")
+    
+    # ============= HOJA TAC =============
+    ws_tac = wb.create_sheet(title="TAC")
+    
+    # Encabezados TAC
+    headers_tac = [
+        "ID", "Fecha Realización", "Fecha Solicitud", "Hora", "Nombre", "RUT",
+        "F/Nac", "Edad", "Previsión", "Atención", "Procedencia", "Externo",
+        "Examen", "Código", "Protocolo", "Cód.ACV", "GES", "M.Contraste",
+        "VFGE", "Premedicado", "Diagnóstico", "Médico Sol.", "TM", "Contrato",
+        "TP", "Secretaria", "Observación", "Creado el"
+    ]
+    
+    ws_tac.append(headers_tac)
+    
+    # Aplicar estilo al encabezado
+    for cell in ws_tac[1]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center")
+    
+    # Datos TAC
     for examen_base in examenes_tac:
-        examen_tac = examen_base.examen_tac
-        paciente = examen_base.paciente
+        examen_tac = db.query(ExamenTAC).options(
+            joinedload(ExamenTAC.protocolo),
+            joinedload(ExamenTAC.diagnostico_clinico),
+            joinedload(ExamenTAC.medico_solicitante),
+            joinedload(ExamenTAC.tm),
+            joinedload(ExamenTAC.tp),
+            joinedload(ExamenTAC.secretaria)
+        ).filter(ExamenTAC.examen_base_id == examen_base.id).first()
         
-        data_tac.append({
-            "ID": examen_base.id,
-            "Fecha Realización": examen_base.fecha_realizacion.strftime("%d/%m/%Y"),
-            "Fecha Solicitud": examen_tac.fecha_solicitud.strftime("%d/%m/%Y"),
-            "Hora": examen_tac.hora_realizacion.strftime("%H:%M") if examen_tac.hora_realizacion else "",
-            "Atención": examen_base.atencion,
-            "Paciente RUT": paciente.rut,
-            "Paciente Nombre": paciente.nombre_completo,
-            "Edad": examen_tac.edad or "",
-            "Externo": examen_tac.externo or "",
-            "Cód. ACV": "Sí" if examen_tac.cod_acv else "No",
-            "GES": "Sí" if examen_tac.ges else "No",
-            "Medio Contraste": "Sí" if examen_tac.medio_contraste else "No",
-            "VFGE": examen_tac.vfge or "",
-            "Premedicado": "Sí" if examen_tac.premedicado else "No" if examen_tac.premedicado is not None else "",
-            "Observación": examen_tac.observacion or "",
-            "Contrato": examen_base.contrato,
-            "Creado el": examen_base.created_at.strftime("%d/%m/%Y %H:%M")
-        })
+        row = [
+            examen_base.id,
+            examen_base.fecha_realizacion.strftime('%Y-%m-%d') if examen_base.fecha_realizacion else '',
+            examen_tac.fecha_solicitud.strftime('%Y-%m-%d') if examen_tac.fecha_solicitud else '',
+            str(examen_tac.hora_realizacion) if examen_tac.hora_realizacion else '',
+            examen_base.paciente.nombre_completo if examen_base.paciente else '',
+            examen_base.paciente.rut if examen_base.paciente else '',
+            examen_base.paciente.fecha_nacimiento.strftime('%Y-%m-%d') if examen_base.paciente and examen_base.paciente.fecha_nacimiento else '',
+            examen_tac.edad if examen_tac.edad else '',
+            examen_base.prevision.nombre if examen_base.prevision else '',
+            examen_base.atencion,
+            examen_base.procedencia.nombre if examen_base.procedencia else '',
+            examen_tac.externo if examen_tac.externo else '',
+            examen_base.examen_especifico.nombre if examen_base.examen_especifico else '',
+            examen_base.codigo_mai.codigo if examen_base.codigo_mai else '',
+            examen_tac.protocolo.nombre if examen_tac.protocolo else '',
+            'Sí' if examen_tac.cod_acv else 'No',
+            'Sí' if examen_tac.ges else 'No',
+            'Sí' if examen_tac.medio_contraste else 'No',
+            examen_tac.vfge if examen_tac.vfge else '',
+            'Sí' if examen_tac.premedicado else ('No' if examen_tac.premedicado is False else ''),
+            examen_tac.diagnostico_clinico.nombre if examen_tac.diagnostico_clinico else '',
+            examen_tac.medico_solicitante.nombre if examen_tac.medico_solicitante else '',
+            examen_tac.tm.nombre if examen_tac.tm else '',
+            examen_base.contrato if examen_base.contrato else '',
+            examen_tac.tp.nombre if examen_tac.tp else '',
+            examen_tac.secretaria.nombre if examen_tac.secretaria else '',
+            examen_tac.observacion if examen_tac.observacion else '',
+            examen_base.created_at.strftime('%Y-%m-%d %H:%M') if examen_base.created_at else ''
+        ]
+        
+        ws_tac.append(row)
     
-    df_tac = pd.DataFrame(data_tac)
+    # ============= HOJA RX =============
+    ws_rx = wb.create_sheet(title="RX")
     
-    # ============================================
-    # HOJA 2: RX
-    # ============================================
-    examenes_rx = query_base.filter(ExamenBase.tipo_examen == "RX").join(
-        ExamenRX, ExamenBase.id == ExamenRX.examen_base_id
-    ).join(
-        Paciente, ExamenBase.paciente_id == Paciente.id
-    ).all()
+    headers_rx = [
+        "ID", "Fecha", "Atención", "Previsión", "Procedencia", "RUT", "Nombre",
+        "Examen", "Código", "Hora", "TM/TP", "Contrato", "Creado el"
+    ]
     
-    data_rx = []
+    ws_rx.append(headers_rx)
+    
+    for cell in ws_rx[1]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center")
+    
     for examen_base in examenes_rx:
-        examen_rx = examen_base.examen_rx
-        paciente = examen_base.paciente
+        examen_rx = db.query(ExamenRX).options(
+            joinedload(ExamenRX.tm_tp)
+        ).filter(ExamenRX.examen_base_id == examen_base.id).first()
         
-        data_rx.append({
-            "ID": examen_base.id,
-            "Fecha Realización": examen_base.fecha_realizacion.strftime("%d/%m/%Y"),
-            "Hora": examen_rx.hora_realizacion.strftime("%H:%M") if examen_rx.hora_realizacion else "",
-            "Atención": examen_base.atencion,
-            "Paciente RUT": paciente.rut,
-            "Paciente Nombre": paciente.nombre_completo,
-            "Contrato": examen_base.contrato,
-            "Creado el": examen_base.created_at.strftime("%d/%m/%Y %H:%M")
-        })
+        row = [
+            examen_base.id,
+            examen_base.fecha_realizacion.strftime('%Y-%m-%d') if examen_base.fecha_realizacion else '',
+            examen_base.atencion,
+            examen_base.prevision.nombre if examen_base.prevision else '',
+            examen_base.procedencia.nombre if examen_base.procedencia else '',
+            examen_base.paciente.rut if examen_base.paciente else '',
+            examen_base.paciente.nombre_completo if examen_base.paciente else '',
+            examen_base.examen_especifico.nombre if examen_base.examen_especifico else '',
+            examen_base.codigo_mai.codigo if examen_base.codigo_mai else '',
+            str(examen_rx.hora_realizacion) if examen_rx.hora_realizacion else '',
+            examen_rx.tm_tp.nombre if examen_rx.tm_tp else '',
+            examen_base.contrato if examen_base.contrato else '',
+            examen_base.created_at.strftime('%Y-%m-%d %H:%M') if examen_base.created_at else ''
+        ]
+        
+        ws_rx.append(row)
     
-    df_rx = pd.DataFrame(data_rx)
+    # ============= HOJA ECO =============
+    ws_eco = wb.create_sheet(title="ECO")
     
-    # ============================================
-    # HOJA 3: ECO
-    # ============================================
-    examenes_eco = query_base.filter(ExamenBase.tipo_examen == "ECO").join(
-        ExamenECO, ExamenBase.id == ExamenECO.examen_base_id
-    ).join(
-        Paciente, ExamenBase.paciente_id == Paciente.id
-    ).all()
+    headers_eco = [
+        "ID", "Fecha", "Mes", "RUT", "Nombre", "Atención", "Previsión",
+        "Código", "Examen", "Diagnóstico", "Procedencia", "Realizado",
+        "Contrato", "Transcribe", "Creado el"
+    ]
     
-    data_eco = []
+    ws_eco.append(headers_eco)
+    
+    for cell in ws_eco[1]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center")
+    
     for examen_base in examenes_eco:
-        examen_eco = examen_base.examen_eco
-        paciente = examen_base.paciente
+        examen_eco = db.query(ExamenECO).options(
+            joinedload(ExamenECO.diagnostico),
+            joinedload(ExamenECO.realizado),
+            joinedload(ExamenECO.transcribe)
+        ).filter(ExamenECO.examen_base_id == examen_base.id).first()
         
-        data_eco.append({
-            "ID": examen_base.id,
-            "Fecha Realización": examen_base.fecha_realizacion.strftime("%d/%m/%Y"),
-            "Mes": f"{examen_base.mes_realizacion}/{examen_base.anio_realizacion}",
-            "Atención": examen_base.atencion,
-            "Paciente RUT": paciente.rut,
-            "Paciente Nombre": paciente.nombre_completo,
-            "Contrato": examen_base.contrato,
-            "Creado el": examen_base.created_at.strftime("%d/%m/%Y %H:%M")
-        })
+        row = [
+            examen_base.id,
+            examen_base.fecha_realizacion.strftime('%Y-%m-%d') if examen_base.fecha_realizacion else '',
+            examen_base.mes_realizacion,
+            examen_base.paciente.rut if examen_base.paciente else '',
+            examen_base.paciente.nombre_completo if examen_base.paciente else '',
+            examen_base.atencion,
+            examen_base.prevision.nombre if examen_base.prevision else '',
+            examen_base.codigo_mai.codigo if examen_base.codigo_mai else '',
+            examen_base.examen_especifico.nombre if examen_base.examen_especifico else '',
+            examen_eco.diagnostico.nombre if examen_eco.diagnostico else '',
+            examen_base.procedencia.nombre if examen_base.procedencia else '',
+            examen_eco.realizado.nombre if examen_eco.realizado else '',
+            examen_base.contrato if examen_base.contrato else '',
+            examen_eco.transcribe.nombre if examen_eco.transcribe else '',
+            examen_base.created_at.strftime('%Y-%m-%d %H:%M') if examen_base.created_at else ''
+        ]
+        
+        ws_eco.append(row)
     
-    df_eco = pd.DataFrame(data_eco)
+    # Ajustar anchos de columna para todas las hojas
+    for ws in [ws_tac, ws_rx, ws_eco]:
+        for column_cells in ws.columns:
+            max_length = 0
+            column_letter = column_cells[0].column_letter
+            for cell in column_cells:
+                try:
+                    if cell.value:
+                        max_length = max(max_length, len(str(cell.value)))
+                except:
+                    pass
+            adjusted_width = min(max_length + 2, 50)
+            ws.column_dimensions[column_letter].width = adjusted_width
     
-    # ============================================
-    # CREAR ARCHIVO EXCEL
-    # ============================================
+    # Guardar en memoria
     output = BytesIO()
-    
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df_tac.to_excel(writer, sheet_name='TAC', index=False)
-        df_rx.to_excel(writer, sheet_name='RX', index=False)
-        df_eco.to_excel(writer, sheet_name='ECO', index=False)
-    
+    wb.save(output)
     output.seek(0)
-    
-    # Nombre del archivo
-    periodo = ""
-    if anio and mes:
-        periodo = f"_{mes}_{anio}"
-    elif anio:
-        periodo = f"_{anio}"
-    
-    filename = f"respaldo_examenes{periodo}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
     
     return StreamingResponse(
         output,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={
-            "Content-Disposition": f"attachment; filename={filename}"
+            "Content-Disposition": f"attachment; filename=examenes_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
         }
     )

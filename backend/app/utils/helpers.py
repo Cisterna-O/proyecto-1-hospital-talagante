@@ -6,4 +6,4 @@ def extraer_mes_anio(fecha: date) -> tuple[int, int]:
 
 def limpiar_rut(rut: str) -> str:
     """Limpiar RUT removiendo puntos y guión"""
-    return rut.replace(".", "").replace("-", "")
+    return rut.replace(".", "").replace("-", "").upper()

@@ -24,6 +24,7 @@ from .models import (
 from .routers import auth, pacientes, catalogos, examenes, reportes, usuarios
 # from .routers import examenes, usuarios, reportes  # Descomentar cuando los crees
 
+from .routers import graficos
 # Crear tablas en la base de datos (en producción usar Alembic)
 Base.metadata.create_all(bind=engine)
 
@@ -31,7 +32,7 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI(
     title="Sistema Hospital Talagante - Imagenología",
     description="API para gestión de exámenes TAC, RX y ECO",
-    version="2.0.0",
+    version="3.0.0",
     docs_url="/docs",
     redoc_url="/redoc"
 )
@@ -71,6 +72,7 @@ app.include_router(catalogos.router, prefix="/api/catalogos", tags=["Catálogos"
 app.include_router(examenes.router, prefix="/api/examenes", tags=["Exámenes"])
 app.include_router(reportes.router, prefix="/api/reportes", tags=["Reportes"])
 app.include_router(usuarios.router, prefix="/api/usuarios", tags=["Usuarios"])
+app.include_router(graficos.router, prefix="/api/graficos", tags=["📊 Gráficos"])
 
 # Descomentar cuando crees estos routers:
 # app.include_router(examenes.router, prefix="/api/examenes", tags=["Exámenes"])

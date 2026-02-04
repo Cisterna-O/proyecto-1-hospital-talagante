@@ -11,6 +11,7 @@ from .paciente import (
     PacienteAutocomplete
 )
 from .catalogos import (
+    PrevisionCreate,
     PrevisionResponse,
     ProcedenciaCreate,
     ProcedenciaResponse,
@@ -32,7 +33,10 @@ from .examen import (
     ExamenRXResponse,
     ExamenECOCreate,
     ExamenECOUpdate,
-    ExamenECOResponse
+    ExamenECOResponse,
+    ExamenTACCompleto,
+    ExamenRXCompleto,
+    ExamenECOCompleto
 )
 from .auth import (
     Token,
@@ -53,6 +57,7 @@ __all__ = [
     "PacienteResponse",
     "PacienteAutocomplete",
     # Catálogos
+    "PrevisionCreate",
     "PrevisionResponse",
     "ProcedenciaCreate",
     "ProcedenciaResponse",
@@ -78,8 +83,11 @@ __all__ = [
     "Token",
     "TokenData",
     "LoginRequest",
-    "LoginResponse"
+    "LoginResponse",
     # ExamenEspecifico
     "ExamenEspecificoCreate",
     "ExamenEspecificoResponse",
+    "ExamenTACCompleto",
+    "ExamenRXCompleto",
+    "ExamenECOCompleto",
 ]

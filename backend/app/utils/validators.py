@@ -47,7 +47,7 @@ def formatear_rut(rut: str) -> str:
     """
     Formatear RUT: 12345678-9
     """
-    rut = rut.replace(".", "").replace("-", "")
+    rut = rut.replace(".", "").replace("-", "").upper()
     return f"{rut[:-1]}-{rut[-1]}"
 
 def calcular_edad(fecha_nacimiento: date, fecha_referencia: date = None) -> int:

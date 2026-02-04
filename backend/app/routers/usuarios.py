@@ -242,18 +242,61 @@ def toggle_usuario(
     db.refresh(usuario)
     return usuario
 
-@router.delete("/{usuario_id}", status_code=204)
-def eliminar_usuario(
+@router.patch("/{usuario_id}/suspend-examenes")
+def suspender_examenes_usuario(
     usuario_id: int,
-    eliminar_examenes: bool = False,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(require_admin)
 ):
-    """
-    Eliminar usuario (solo admin)
+    from datetime import datetime
     
-    eliminar_examenes=true: elimina también todos sus exámenes (soft delete)
-    """
+    usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    # Contar exámenes actuales del usuario
+    examenes_activos = db.query(ExamenBase).filter(
+        ExamenBase.created_by == usuario_id,
+        ExamenBase.deleted_at.is_(None)
+    ).count()
+
+    examenes_suspendidos = db.query(ExamenBase).filter(
+        ExamenBase.created_by == usuario_id,
+        ExamenBase.deleted_at.isnot(None)
+    ).count()
+
+    if examenes_suspendidos > 0:
+        # Reactivar todos los exámenes suspendidos
+        db.query(ExamenBase).filter(
+            ExamenBase.created_by == usuario_id
+        ).update({"deleted_at": None})
+
+        db.commit()
+        return {
+            "message": f"Se reactivaron {examenes_suspendidos} exámenes",
+            "examenes_reactivados": examenes_suspendidos
+        }
+    else:
+        # Suspender todos los exámenes activos
+        db.query(ExamenBase).filter(
+            ExamenBase.created_by == usuario_id,
+            ExamenBase.deleted_at.is_(None)
+        ).update({"deleted_at": datetime.utcnow()})
+
+        db.commit()
+        return {
+            "message": f"Se suspendieron {examenes_activos} exámenes",
+            "examenes_suspendidos": examenes_activos
+        }
+
+
+@router.delete("/{usuario_id}", status_code=204)
+def eliminar_usuario(
+    usuario_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(require_admin)
+):
+    from datetime import datetime
     
     usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
     if not usuario:
@@ -262,18 +305,14 @@ def eliminar_usuario(
     if usuario.id == current_user.id:
         raise HTTPException(status_code=400, detail="No puedes eliminarte a ti mismo")
     
-    examenes_count = db.query(ExamenBase).filter(ExamenBase.created_by == usuario_id).count()
+    # Solo suspender exámenes, no eliminar usuario si es admin
+    if usuario.rol == "administrador":
+        raise HTTPException(status_code=400, detail="No se puede eliminar un administrador")
     
-    if examenes_count > 0 and not eliminar_examenes:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Usuario tiene {examenes_count} exámenes. Usa eliminar_examenes=true o desactiva el usuario."
-        )
+    # Suspender todos los exámenes del usuario
+    db.query(ExamenBase).filter(ExamenBase.created_by == usuario_id).update({"deleted_at": datetime.utcnow()})
     
-    if eliminar_examenes:
-        from datetime import datetime
-        db.query(ExamenBase).filter(ExamenBase.created_by == usuario_id).update({"deleted_at": datetime.utcnow()})
-    
+    # Eliminar usuario ingresador
     db.delete(usuario)
     db.commit()
     return None

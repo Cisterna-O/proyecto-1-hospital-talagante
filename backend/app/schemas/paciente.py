@@ -4,6 +4,7 @@ from datetime import date, datetime
 
 class PacienteBase(BaseModel):
     rut: str = Field(..., min_length=9, max_length=12)
+    tipo_identificacion: str = Field(default="RUT_CHILENO", pattern="^(RUT_CHILENO|RUT_EXTRANJERO|PASAPORTE|OTRO)$")
     nombre_completo: str = Field(..., min_length=3, max_length=200)
     fecha_nacimiento: Optional[date] = None
     
@@ -24,6 +25,7 @@ class PacienteUpdate(BaseModel):
 class PacienteResponse(PacienteBase):
     id: int
     created_at: datetime
+    edad: Optional[int] = None
     
     class Config:
         from_attributes = True

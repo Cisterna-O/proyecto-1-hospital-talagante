@@ -189,3 +189,152 @@ class ExamenECOUpdate(BaseModel):
     diagnostico_id: Optional[int] = None
     realizado_id: Optional[int] = None
     transcribe_id: Optional[int] = None
+
+# SCHEMAS COMPLETOS PARA LISTAS
+# Agregar a backend/app/schemas/examen.py
+
+from typing import Optional
+from pydantic import BaseModel
+from datetime import datetime, date
+
+# ============================================
+# SCHEMAS PARA DATOS ANIDADOS
+# ============================================
+
+class PacienteEnExamen(BaseModel):
+    rut: str
+    nombre_completo: str
+    fecha_nacimiento: Optional[date] = None
+    
+    class Config:
+        from_attributes = True
+
+class CatalogoSimple(BaseModel):
+    nombre: str
+    
+    class Config:
+        from_attributes = True
+
+class CodigoMAIEnExamen(BaseModel):
+    codigo: str
+    descripcion: str
+    
+    class Config:
+        from_attributes = True
+
+# ============================================
+# EXAMEN TAC COMPLETO
+# ============================================
+
+class ExamenTACCompleto(BaseModel):
+    # IDs y fechas
+    id: int
+    fecha_realizacion: date
+    fecha_solicitud: date
+    hora_realizacion: time
+    mes_realizacion: int
+    anio_realizacion: int
+    created_at: datetime
+    
+    # Paciente
+    paciente: PacienteEnExamen
+    edad: Optional[int] = None
+    
+    # Datos generales
+    atencion: str
+    contrato: str
+    prevision: Optional[CatalogoSimple] = None
+    procedencia: Optional[CatalogoSimple] = None
+    examen_especifico: CatalogoSimple
+    codigo_mai: Optional[CodigoMAIEnExamen] = None
+    
+    # Datos específicos TAC
+    externo: Optional[str] = None
+    protocolo: Optional[CatalogoSimple] = None
+    cod_acv: bool
+    ges: bool
+    medio_contraste: bool
+    vfge: Optional[str] = None
+    premedicado: Optional[bool] = None
+    diagnostico_clinico: Optional[CatalogoSimple] = None
+    medico_solicitante: Optional[CatalogoSimple] = None
+    tm: Optional[CatalogoSimple] = None
+    tp: Optional[CatalogoSimple] = None
+    secretaria: Optional[CatalogoSimple] = None
+    observacion: Optional[str] = None
+    
+    # Estado
+    deleted_at: Optional[datetime] = None
+    en_revision: bool
+    
+    class Config:
+        from_attributes = True
+
+# ============================================
+# EXAMEN RX COMPLETO
+# ============================================
+
+class ExamenRXCompleto(BaseModel):
+    # IDs y fechas
+    id: int
+    fecha_realizacion: date
+    hora_realizacion: time
+    mes_realizacion: int
+    anio_realizacion: int
+    created_at: datetime
+    
+    # Paciente
+    paciente: PacienteEnExamen
+    
+    # Datos generales
+    atencion: str
+    contrato: str
+    prevision: Optional[CatalogoSimple] = None
+    procedencia: Optional[CatalogoSimple] = None
+    examen_especifico: CatalogoSimple
+    codigo_mai: Optional[CodigoMAIEnExamen] = None
+    
+    # Datos específicos RX
+    tm_tp: Optional[CatalogoSimple] = None
+    
+    # Estado
+    deleted_at: Optional[datetime] = None
+    en_revision: bool
+    
+    class Config:
+        from_attributes = True
+
+# ============================================
+# EXAMEN ECO COMPLETO
+# ============================================
+
+class ExamenECOCompleto(BaseModel):
+    # IDs y fechas
+    id: int
+    fecha_realizacion: date
+    mes_realizacion: int
+    anio_realizacion: int
+    created_at: datetime
+    
+    # Paciente
+    paciente: PacienteEnExamen
+    
+    # Datos generales
+    atencion: str
+    contrato: str
+    prevision: Optional[CatalogoSimple] = None
+    procedencia: Optional[CatalogoSimple] = None
+    examen_especifico: CatalogoSimple
+    codigo_mai: Optional[CodigoMAIEnExamen] = None
+    
+    # Datos específicos ECO
+    diagnostico: Optional[CatalogoSimple] = None
+    realizado: Optional[CatalogoSimple] = None
+    transcribe: Optional[CatalogoSimple] = None
+    
+    # Estado
+    deleted_at: Optional[datetime] = None
+    en_revision: bool
+    
+    class Config:
+        from_attributes = True

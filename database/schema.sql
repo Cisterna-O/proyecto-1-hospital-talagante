@@ -1,5 +1,5 @@
 -- ============================================
--- SISTEMA HOSPITAL TALAGANTE - IMAGENOLOGÍA
+-- SISTEMA HOSPITAL TALAGANTE - IMAGENOLOGIA
 -- Base de Datos PostgreSQL
 -- ============================================
 
@@ -18,6 +18,8 @@ CREATE TABLE usuarios (
     password_hash VARCHAR(255) NOT NULL,
     rol VARCHAR(20) NOT NULL CHECK (rol IN ('ingresador', 'administrador')),
     activo BOOLEAN DEFAULT true,
+    debe_cambiar_password BOOLEAN DEFAULT true,
+    ultimo_login TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -31,6 +33,7 @@ CREATE INDEX idx_usuarios_email ON usuarios(email);
 CREATE TABLE pacientes (
     id SERIAL PRIMARY KEY,
     rut VARCHAR(12) UNIQUE NOT NULL,
+    tipo_identificacion VARCHAR(20) NOT NULL DEFAULT 'RUT_CHILENO',
     nombre_completo VARCHAR(200) NOT NULL,
     fecha_nacimiento DATE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -41,7 +44,7 @@ CREATE INDEX idx_pacientes_rut ON pacientes(rut);
 CREATE INDEX idx_pacientes_nombre ON pacientes(nombre_completo);
 
 -- ============================================
--- CATÁLOGOS
+-- CATALOGOS
 -- ============================================
 
 -- Previsiones
@@ -66,7 +69,7 @@ INSERT INTO procedencias (nombre) VALUES
 ('CAE'),
 ('CARDIOLOGIA'),
 ('CERRADA'),
-('CIRUGIA'),
+('CIRUGÍA'),
 ('CMA'),
 ('DERMATOLOGIA'),
 ('DOMICILIARIA'),
@@ -101,7 +104,7 @@ INSERT INTO procedencias (nombre) VALUES
 ('UROLOGIA'),
 ('UTI');
 
--- Códigos MAI (por tipo de examen)
+-- Codigos MAI (por tipo de examen)
 CREATE TABLE codigos_mai (
     id SERIAL PRIMARY KEY,
     tipo_examen VARCHAR(10) NOT NULL CHECK (tipo_examen IN ('TAC', 'RX', 'ECO')),
@@ -117,11 +120,11 @@ INSERT INTO codigos_mai (tipo_examen, codigo, descripcion) VALUES
 ('TAC', '403001', 'CEREBRO'),
 ('TAC', '403002', 'SILLA TURCA'),
 ('TAC', '403003', 'ANGULO PONTO CEREBELOSO'),
-('TAC', '403006', 'OIDO'),
-('TAC', '403007', 'ORBITAS MAXILOFACIAL'),
+('TAC', '403006', 'OÍDO'),
+('TAC', '403007', 'ÓRBITAS MAXILOFACIAL'),
 ('TAC', '403008', 'COLUMNA CERVICAL'),
 ('TAC', '403012', 'CUELLO'),
-('TAC', '403013', 'TORAX'),
+('TAC', '403013', 'TÓRAX'),
 ('TAC', '403014', 'ABDOMEN'),
 ('TAC', '403016', 'PELVIS'),
 ('TAC', '403017', 'EXTREMIDAD'),
@@ -134,7 +137,7 @@ INSERT INTO codigos_mai (tipo_examen, codigo, descripcion) VALUES
 ('TAC', '403024', 'PLANIFICACION RADIOTERAPIA'),
 ('TAC', '403025', 'CALCIO CORONARIO'),
 ('TAC', '403101', 'CEREBRO'),
-('TAC', '403102', 'TORAX'),
+('TAC', '403102', 'TÓRAX'),
 ('TAC', '403103', 'ABDOMEN'),
 ('TAC', '403104', 'CUELLO'),
 ('TAC', '403105', 'PELVIS'),
@@ -159,19 +162,19 @@ INSERT INTO codigos_mai (tipo_examen, codigo, descripcion) VALUES
 ('RX', '401022', 'Estudio radiológico de deglución faríngea'),
 ('RX', '401023', 'Estudio radiológico del intestino delgado'),
 ('RX', '401024', 'Radiografía de esófago, estómago y duodeno, simple en niños'),
-('RX', '401027', 'Pielografía de eliminación o descendente: incluye renal y vesical simples previas, 3 placas post inyección de medio de contraste, controles de pie y cistografía pre y post miccional.'),
+('RX', '401027', 'Pielografia de eliminación o descendente: incluye renal y vesical simples previas, 3 placas post inyección de medio de contraste, controles de pie y cistografía pre y post miccional.'),
 ('RX', '401028', 'Radiografía renal simple (proc. aut.)'),
 ('RX', '401029', 'Radiografía vesical simple o perivesical (proc. aut.)'),
 ('RX', '401031', 'Radiografía de cavidades perinasales, órbitas, articulaciones temporomandibulares, huesos propios de la nariz, malar, maxilar, arco cigomático y cara'),
 ('RX', '401032', 'Radiografía de cráneo frontal y lateral'),
-('RX', '401033', 'Radiografía de Cráneo proyección especial de base de cráneo (Towne)'),
+('RX', '401033', 'Radiografía de cráneo proyección especial de base de cráneo (Towne)'),
 ('RX', '401035', 'Radiografía de oído, unilateral o bilateral'),
 ('RX', '401040', 'Radiografía de silla turca frontal y lateral'),
 ('RX', '401042', 'Radiografía de columna cervical o atlas-axis (frontal y lateral)'),
 ('RX', '401043', 'Radiografía de columna cervical (frontal, lateral y oblicuas)'),
 ('RX', '401044', 'Radiografía de columna cervical flexión y extensión (Dinámicas)'),
 ('RX', '401045', 'Radiografía de columna dorsal o dorsolumbar localizada, parrilla costal (frontal y lateral)'),
-('RX', '401046', 'Radiografía columna lumbar o lumbosacra ( frontal, lateral y focalizada en el 5° espacio)'),
+('RX', '401046', 'Radiografía columna lumbar o lumbosacra ( frontal, lateral y focalizada en el quinto espacio)'),
 ('RX', '401047', 'Radiografía columna lumbar o lumbosacra flexión y extensión (Dinámicas)'),
 ('RX', '401048', 'Radiografía columna lumbar o lumbosacra, oblicuas adicionales'),
 ('RX', '401049', 'Radiografía de columna total, panorámica con folio graduado frontal o lateral'),
@@ -180,7 +183,7 @@ INSERT INTO codigos_mai (tipo_examen, codigo, descripcion) VALUES
 ('RX', '401053', 'Radiografía de Sacrocoxis o articulaciones sacroilíacas.'),
 ('RX', '401054', 'Radiografía de brazo, antebrazo, codo, muñeca, mano, dedos, pie (frontal y lateral)'),
 ('RX', '401055', 'Radiografía de clavícula.'),
-('RX', '401056', 'Radiografía Edad Ósea: carpo y mano'),
+('RX', '401056', 'Radiografía Edad ósea: carpo y mano'),
 ('RX', '401057', 'Radiografía Edad ósea : rodilla frontal'),
 ('RX', '401058', 'Estudio radiológico de escafoides'),
 ('RX', '401059', 'Estudio radiológico de muñeca o tobillo frontal lateral y oblicuas'),
@@ -241,14 +244,14 @@ INSERT INTO examenes_especificos (tipo_examen, nombre) VALUES
 ('TAC', 'ABDOMEN'),
 ('TAC', 'ABDOMEN Y PELVIS'),
 ('TAC', 'ANGIOTAC'),
-('TAC', 'ARTICULACIONES SACROILIACAS'),
+('TAC', 'ARTICULACIONES SACROILÍACAS'),
 ('TAC', 'CADERA'),
 ('TAC', 'CADERAS'),
 ('TAC', 'CALCIO CORONARIO'),
 ('TAC', 'CARA'),
 ('TAC', 'CAVIDADES'),
 ('TAC', 'CEREBRO'),
-('TAC', 'CLAVICULA'),
+('TAC', 'CLAVÍCULA'),
 ('TAC', 'COL. CERVICAL'),
 ('TAC', 'COL. DORSAL'),
 ('TAC', 'COL. LUMBAR'),
@@ -261,9 +264,9 @@ INSERT INTO examenes_especificos (tipo_examen, nombre) VALUES
 ('TAC', 'MANO'),
 ('TAC', 'MUÑECA'),
 ('TAC', 'MUSLO'),
-('TAC', 'OIDO'),
+('TAC', 'OÍDO'),
 ('TAC', 'OIDOS'),
-('TAC', 'ORBITAS'),
+('TAC', 'ÓRBITAS'),
 ('TAC', 'PELVIIS'),
 ('TAC', 'PELVIS'),
 ('TAC', 'PIE'),
@@ -271,10 +274,10 @@ INSERT INTO examenes_especificos (tipo_examen, nombre) VALUES
 ('TAC', 'PIERNA'),
 ('TAC', 'RODILLA'),
 ('TAC', 'SACROCOXIS'),
-('TAC', 'SACROILIACAS'),
+('TAC', 'SACROILÍACAS'),
 ('TAC', 'SCORE DE CALCIO'),
 ('TAC', 'TOBILLO'),
-('TAC', 'TORAX'),
+('TAC', 'TÓRAX'),
 ('TAC', 'UROTAC'),
 -- RX
 ('RX', 'ABDOMEN'),
@@ -294,20 +297,20 @@ INSERT INTO examenes_especificos (tipo_examen, nombre) VALUES
 ('RX', 'CAVUM'),
 ('RX', 'CAVUN'),
 ('RX', 'CERVICAL'),
-('RX', 'CLAVICULA'),
+('RX', 'CLAVÍCULA'),
 ('RX', 'CODO'),
 ('RX', 'COL. CERVICAL'),
 ('RX', 'COL. DORSAL'),
 ('RX', 'COL. LUMBAR'),
 ('RX', 'COL. TOTAL'),
 ('RX', 'COXIS'),
-('RX', 'CRANEO'),
-('RX', 'CRANEO TOWNE'),
+('RX', 'CRÁNEO'),
+('RX', 'CRÁNEO TOWNE'),
 ('RX', 'DEDO'),
 ('RX', 'DORSAL'),
 ('RX', 'ESCAFOIDES'),
 ('RX', 'ESCAPULA'),
-('RX', 'FEMUR'),
+('RX', 'FÉMUR'),
 ('RX', 'HOMBRO'),
 ('RX', 'HUESOS PROPIOS'),
 ('RX', 'LAWENSTEIN'),
@@ -328,20 +331,20 @@ INSERT INTO examenes_especificos (tipo_examen, nombre) VALUES
 ('RX', 'RODILLA'),
 ('RX', 'ROSENBERG'),
 ('RX', 'ROTULA'),
-('RX', 'ROTULAS'),
+('RX', 'RÓTULAS'),
 ('RX', 'SACROCOXIS'),
 ('RX', 'SESAMOIDE'),
 ('RX', 'TOBILLO'),
 ('RX', 'TOBILOO'),
 ('RX', 'TORAT'),
-('RX', 'TORAX'),
+('RX', 'TÓRAX'),
 ('RX', 'TOWNE'),
 ('RX', 'WATERS'),
 -- ECO
 ('ECO', 'ECOGRAFÍA ABDOMINAL (INCLUYE HÍGADO, VÍA BILIAR, VESÍCULA, PÁNCREAS, RIÑONES, BAZO, RETROPERITONEO Y GRANDES VASOS)'),
 ('ECO', 'ECOGRAFÍA ABDOMINAL O DE VASOS TESTICULARES (DOPPLER RENAL)'),
 ('ECO', 'ECOGRAFÍA DOPPLER DE VASOS DEL CUELLO'),
-('ECO', 'ECOGRAFIA ENCEFALICA'),
+('ECO', 'ECOGRAFÍA ENCEFÁLICA'),
 ('ECO', 'ECOGRAFÍA GINECOLÓGICA, PELVIANA FEMENINA U OBSTÉTRICA CON ESTUDIO FETAL'),
 ('ECO', 'ECOGRAFÍA MAMARIA BILATERAL (INCLUYE DOPPLER)'),
 ('ECO', 'ECOGRAFÍA OCULAR, UNILATERAL O BILATERAL.'),
@@ -359,14 +362,14 @@ CREATE TABLE protocolos_tac (
     activo BOOLEAN DEFAULT true
 );
 
--- Diagnósticos
+-- Diagnosticos
 CREATE TABLE diagnosticos (
     id SERIAL PRIMARY KEY,
     nombre TEXT UNIQUE NOT NULL,
     activo BOOLEAN DEFAULT true
 );
 
--- Personal Médico
+-- Personal Medico
 CREATE TABLE personal_medico (
     id SERIAL PRIMARY KEY,
     nombre VARCHAR(150) NOT NULL,
@@ -389,25 +392,27 @@ CREATE TABLE examenes_base (
     prevision_id INTEGER REFERENCES previsiones(id),
     procedencia_id INTEGER REFERENCES procedencias(id),
     paciente_id INTEGER NOT NULL REFERENCES pacientes(id),
-    examenes_especificos_id INTEGER NOT NULL REFERENCES examenes_especificos(id),
+    examen_especifico_id INTEGER NOT NULL REFERENCES examenes_especificos(id),
     codigo_mai_id INTEGER REFERENCES codigos_mai(id),
     contrato VARCHAR(50) CHECK (contrato IN ('Empresa Externa', 'Institucional')),
     
-    -- Auditoría
+    -- Auditoria
     mes_realizacion INTEGER NOT NULL,  -- 1-12
     anio_realizacion INTEGER NOT NULL,
     created_by INTEGER REFERENCES usuarios(id),
     updated_by INTEGER REFERENCES usuarios(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMP NULL
+    deleted_at TIMESTAMP NULL,
+    en_revision BOOLEAN DEFAULT false,
+    motivo_revision TEXT NULL
 );
 
 CREATE INDEX idx_examenes_fecha ON examenes_base(fecha_realizacion);
 CREATE INDEX idx_examenes_tipo ON examenes_base(tipo_examen);
 CREATE INDEX idx_examenes_paciente ON examenes_base(paciente_id);
 CREATE INDEX idx_examenes_mes_anio ON examenes_base(mes_realizacion, anio_realizacion);
-CREATE INDEX idx_examenes_especificos ON examenes_base(examenes_especificos_id);
+CREATE INDEX idx_examenes_especificos ON examenes_base(examen_especifico_id);
 
 -- ============================================
 -- TABLA: examenes_tac
@@ -416,17 +421,17 @@ CREATE TABLE examenes_tac (
     id SERIAL PRIMARY KEY,
     examen_base_id INTEGER UNIQUE NOT NULL REFERENCES examenes_base(id) ON DELETE CASCADE,
     
-    -- Datos específicos TAC
+    -- Datos especificos TAC
     fecha_solicitud DATE NOT NULL,
     hora_realizacion TIME NOT NULL,
     fecha_nacimiento DATE,
-    edad INTEGER,  -- Calculado automáticamente
+    edad INTEGER,  -- Calculado automaticamente
     externo VARCHAR(50),  -- Opcional: Ambulatorio/Hospitalizado/Urgencias
     protocolo_id INTEGER REFERENCES protocolos_tac(id),
     cod_acv BOOLEAN NOT NULL,
     ges BOOLEAN NOT NULL,
     medio_contraste BOOLEAN NOT NULL,
-    vfge VARCHAR(50),  -- Sin Creatinina o valor numérico, opcional
+    vfge VARCHAR(50),  -- Sin Creatinina o valor numerico, opcional
     premedicado BOOLEAN,  -- Obligatorio si vfge tiene valor
     diagnostico_clinico_id INTEGER REFERENCES diagnosticos(id),
     medico_solicitante_id INTEGER REFERENCES personal_medico(id),
@@ -445,7 +450,7 @@ CREATE TABLE examenes_rx (
     id SERIAL PRIMARY KEY,
     examen_base_id INTEGER UNIQUE NOT NULL REFERENCES examenes_base(id) ON DELETE CASCADE,
     
-    -- Datos específicos RX
+    -- Datos especificos RX
     hora_realizacion TIME NOT NULL,
     tm_tp_id INTEGER REFERENCES personal_medico(id)  -- Puede ser TM o TP
 );
@@ -459,7 +464,7 @@ CREATE TABLE examenes_eco (
     id SERIAL PRIMARY KEY,
     examen_base_id INTEGER UNIQUE NOT NULL REFERENCES examenes_base(id) ON DELETE CASCADE,
     
-    -- Datos específicos ECO
+    -- Datos especificos ECO
     diagnostico_id INTEGER REFERENCES diagnosticos(id),
     realizado_id INTEGER REFERENCES personal_medico(id),
     transcribe_id INTEGER REFERENCES personal_medico(id)
@@ -491,7 +496,7 @@ BEFORE UPDATE ON examenes_base
 FOR EACH ROW EXECUTE FUNCTION update_timestamp();
 
 -- ============================================
--- FUNCIÓN: Calcular edad automáticamente
+-- FUNCION: Calcular edad automaticamente
 -- ============================================
 CREATE OR REPLACE FUNCTION calcular_edad(fecha_nac DATE, fecha_ref DATE)
 RETURNS INTEGER AS $$
@@ -511,21 +516,22 @@ $$ LANGUAGE plpgsql;
 
 -- Usuario ingresador de prueba
 --INSERT INTO usuarios (rut, nombre, email, password_hash, rol)
---VALUES ('98765432-1', 'Tecnólogo Prueba', 'tecnologo@hospital.cl', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5cOW3G9WQ7W4m', 'ingresador');
+--VALUES ('98765432-1', 'Tecnologo Prueba', 'tecnologo@hospital.cl', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5cOW3G9WQ7W4m', 'ingresador');
 -- Password: admin123
 
 -- Paciente de prueba
 --INSERT INTO pacientes (rut, nombre_completo, fecha_nacimiento)
---VALUES ('11111111-1', 'Juan Pérez González', '1980-05-15');
+--VALUES ('11111111-1', 'Juan Perez Gonzalez', '1980-05-15');
 
 -- Procedencias comunes
 --INSERT INTO procedencias (nombre) VALUES
 --('Consulta Externa'),
 --('Urgencias'),
---('Hospitalización'),
+--('Hospitalizacion'),
 --('UPC'),
---('Pabellón');
+--('Pabellon');
 
--- Verificación
+-- Verificacion
 SELECT 'Base de datos creada exitosamente' AS status;
 SELECT COUNT(*) AS total_tablas FROM information_schema.tables WHERE table_schema = 'public';
+CREATE INDEX idx_examenes_revision ON examenes_base(en_revision) WHERE en_revision = true;

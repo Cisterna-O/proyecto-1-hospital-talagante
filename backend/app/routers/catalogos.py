@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
+
 from ..database import get_db
 from ..models.catalogos import (
     Prevision,
@@ -13,6 +14,7 @@ from ..models.catalogos import (
 )
 from ..models.usuario import Usuario
 from ..schemas.catalogos import (
+    CatalogoCreate,
     PrevisionResponse,
     ProcedenciaCreate,
     ProcedenciaResponse,
@@ -52,6 +54,32 @@ def listar_previsiones(
         query = query.filter(Prevision.activo == activo)
     
     return query.all()
+
+@router.post("/previsiones", response_model=PrevisionResponse)
+def crear_prevision(
+    prevision_data: CatalogoCreate,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user)
+):
+    """Crear nueva previsión"""
+    # Verificar si ya existe
+    existing = db.query(Prevision).filter(
+        Prevision.nombre == prevision_data.nombre
+    ).first()
+    
+    if existing:
+        if not existing.activo:
+            existing.activo = True
+            db.commit()
+            db.refresh(existing)
+        return existing
+    
+    db_prevision = Prevision(nombre=prevision_data.nombre)
+    db.add(db_prevision)
+    db.commit()
+    db.refresh(db_prevision)
+    
+    return db_prevision
 
 # ============================================
 # PROCEDENCIAS

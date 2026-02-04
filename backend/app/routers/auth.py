@@ -3,6 +3,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import timedelta
 from pydantic import BaseModel, EmailStr, Field
+from ..utils.timezone import get_chile_time
 
 from ..database import get_db
 from ..models.usuario import Usuario
@@ -110,6 +111,9 @@ def login(login_data: LoginRequest, db: Session = Depends(get_db)):
             detail="Usuario inactivo. Contacta al administrador."
         )
     
+    usuario.ultimo_login = get_chile_time()
+    db.commit()
+    
     # Crear token
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
@@ -117,6 +121,10 @@ def login(login_data: LoginRequest, db: Session = Depends(get_db)):
         expires_delta=access_token_expires
     )
     
+    from datetime import datetime
+    usuario.ultimo_login = datetime.utcnow()
+    db.commit()
+
     return {
         "access_token": access_token,
         "token_type": "bearer",

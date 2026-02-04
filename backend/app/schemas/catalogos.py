@@ -90,3 +90,7 @@ class ExamenEspecificoResponse(ExamenEspecificoBase):
     
     class Config:
         from_attributes = True
+
+
+class PrevisionCreate(BaseModel):
+    nombre: str
