@@ -63,7 +63,7 @@ export default function Dashboard() {
                     to="/codigos"
                     className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition"
                 >
-                    <h3 className="text-xl font-bold mb-2">Códigos MAI</h3>
+                    <h3 className="text-xl font-bold mb-2">Códigos</h3>
                     <p className="text-gray-600">Consultar códigos por tipo de examen</p>
                 </Link>
                 

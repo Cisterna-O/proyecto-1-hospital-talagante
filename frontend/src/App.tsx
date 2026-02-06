@@ -11,6 +11,7 @@ import Administracion from './pages/Administracion';
 import Perfil from './pages/Perfil';
 import EditarExamen from './pages/EditarExamen';
 import ErrorBoundary from './components/ErrorBoundary';
+import RegistrarAdmin from './pages/RegistrarAdmin';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { token } = useAuth();
@@ -32,6 +33,8 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
+
+          <Route path="/registrar-admin" element={<RegistrarAdmin />} />
           
           <Route path="/" element={
             <ProtectedRoute>

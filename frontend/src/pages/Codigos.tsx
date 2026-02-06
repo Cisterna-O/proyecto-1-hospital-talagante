@@ -48,7 +48,7 @@ export default function Codigos() {
     
     return (
         <div>
-            <h1 className="text-2xl font-bold mb-6">Códigos MAI</h1>
+            <h1 className="text-2xl font-bold mb-6">Códigos</h1>
             
             <div className="bg-white p-4 rounded-lg shadow mb-6">
                 <div className="flex gap-4 mb-4">

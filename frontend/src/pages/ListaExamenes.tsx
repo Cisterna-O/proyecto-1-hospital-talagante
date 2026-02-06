@@ -210,7 +210,7 @@ export default function ListaExamenes() {
                                         <th className="px-2 py-2 text-left">Paciente RUT</th>
                                         <th className="px-2 py-2 text-left">Paciente Nombre</th>
                                         <th className="px-2 py-2 text-left">Examen Específico</th>
-                                        <th className="px-2 py-2 text-left">Código MAI</th>
+                                        <th className="px-2 py-2 text-left">Código</th>
                                         <th className="px-2 py-2 text-left">Contrato</th>
                                         <th className="px-2 py-2 text-left">Mes/Año</th>
                                         {/* Columnas específicas TAC */}
@@ -337,7 +337,7 @@ export default function ListaExamenes() {
                                         <th className="px-2 py-2 text-left">Paciente RUT</th>
                                         <th className="px-2 py-2 text-left">Paciente Nombre</th>
                                         <th className="px-2 py-2 text-left">Examen Específico</th>
-                                        <th className="px-2 py-2 text-left">Código MAI</th>
+                                        <th className="px-2 py-2 text-left">Código</th>
                                         <th className="px-2 py-2 text-left">Contrato</th>
                                         <th className="px-2 py-2 text-left">Mes/Año</th>
                                         {/* Columnas específicas RX */}
@@ -427,7 +427,7 @@ export default function ListaExamenes() {
                                         <th className="px-2 py-2 text-left">Paciente RUT</th>
                                         <th className="px-2 py-2 text-left">Paciente Nombre</th>
                                         <th className="px-2 py-2 text-left">Examen Específico</th>
-                                        <th className="px-2 py-2 text-left">Código MAI</th>
+                                        <th className="px-2 py-2 text-left">Código</th>
                                         <th className="px-2 py-2 text-left">Contrato</th>
                                         <th className="px-2 py-2 text-left">Mes/Año</th>
                                         {/* Columnas específicas ECO */}

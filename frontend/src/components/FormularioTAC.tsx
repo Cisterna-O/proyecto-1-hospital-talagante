@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Combobox from '../components/Combobox';
 import { PersonalCombobox } from '../components/PersonalCombobox';
+import { useLastExamData } from '../hooks/useLastExamData';
 import api from '../api/axios';
 import type { ExamenTACCreate, Catalogo, CodigoMAI, PersonalMedico } from '../types';
 
 export default function FormularioTAC() {
     const navigate = useNavigate();
+    const { lastData, saveLastData } = useLastExamData('TAC');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [showConfirm, setShowConfirm] = useState(false);
@@ -22,7 +24,8 @@ export default function FormularioTAC() {
     const [tps , setTps] = useState<PersonalMedico[]>([]);
     const [secretarias, setSecretarias] = useState<PersonalMedico[]>([]);
     
-    const [formData, setFormData] = useState<ExamenTACCreate>({
+    // Estado inicial base (sin autocompletar)
+    const baseFormData: ExamenTACCreate = {
         tipo_examen: 'TAC',
         fecha_realizacion: '',
         atencion: 'Cerrada',
@@ -43,7 +46,29 @@ export default function FormularioTAC() {
         vfge: undefined,
         premedicado: undefined,
         observacion: ''
-    });
+    };
+
+    const [formData, setFormData] = useState<ExamenTACCreate>(baseFormData);
+    
+    // Actualizar formulario cuando lastData cambie
+    useEffect(() => {
+        if (lastData) {
+            console.log('📝 Aplicando datos guardados:', lastData); // Debug
+            setFormData(prev => ({
+                ...prev,
+                // Campos que SÍ se autocompletan
+                atencion: lastData.atencion || prev.atencion,
+                prevision_id: lastData.prevision_id || prev.prevision_id,
+                procedencia_id: lastData.procedencia_id || prev.procedencia_id,
+                contrato: lastData.contrato || prev.contrato,
+                externo: lastData.externo,
+                medico_solicitante_id: lastData.medico_solicitante_id,
+                tm_id: lastData.tm_id,
+                tp_id: lastData.tp_id,
+                secretaria_id: lastData.secretaria_id,
+            }));
+        }
+    }, [lastData]);
     
     useEffect(() => {
         loadCatalogos();
@@ -147,6 +172,23 @@ export default function FormularioTAC() {
             };
 
             await api.post('/examenes/tac', dataToSend);
+            
+            // Guardar datos para próximo formulario (solo campos permitidos)
+            const dataToSave = {
+                atencion: formData.atencion,
+                prevision_id: formData.prevision_id,
+                procedencia_id: formData.procedencia_id,
+                contrato: formData.contrato,
+                externo: formData.externo,
+                medico_solicitante_id: formData.medico_solicitante_id,
+                tm_id: formData.tm_id,
+                tp_id: formData.tp_id,
+                secretaria_id: formData.secretaria_id
+            };
+            
+            console.log('💾 Guardando para próximo examen:', dataToSave); // Debug
+            saveLastData(dataToSave);
+
             alert('Examen TAC creado exitosamente');
             navigate('/examenes');
         } catch (err: any) {
@@ -194,6 +236,12 @@ export default function FormularioTAC() {
     return (
         <div className="max-w-4xl mx-auto">
             <h1 className="text-2xl font-bold mb-6">Nuevo Examen TAC</h1>
+            
+            {lastData && (
+                <div className="bg-blue-50 border border-blue-200 text-blue-800 p-3 rounded mb-4 text-sm">
+                    ℹ️ Algunos campos se han rellenado automáticamente con los datos del último examen TAC que registraste.
+                </div>
+            )}
             
             <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow space-y-6">
                 <div className="grid grid-cols-2 gap-4">
@@ -329,7 +377,7 @@ export default function FormularioTAC() {
                     />
                     
                     <div>
-                        <label className="block text-sm font-medium mb-1">Código MAI *</label>
+                        <label className="block text-sm font-medium mb-1">Código *</label>
                         <select
                             name="codigo_mai_id"
                             value={formData.codigo_mai_id}

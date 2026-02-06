@@ -29,7 +29,23 @@ export default function Login() {
         navigate('/');
       }
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Error al iniciar sesión');
+      if (err.response) {
+        // Error respondido por el backend
+        const detail = err.response.data?.detail;
+        if (typeof detail === 'string') {
+          setError(detail);
+        } else if (detail?.message) {
+          setError(detail.message);
+        } else {
+          setError(`Error ${err.response.status}: ${err.response.statusText}`);
+        }
+      } else if (err.request) {
+        // No hubo respuesta (backend caído, CORS, etc)
+        setError('No se pudo conectar con el servidor');
+      } else {
+        // Error inesperado
+        setError(err.message || 'Error inesperado');
+      }
     } finally {
       setLoading(false);
     }
@@ -118,6 +134,14 @@ export default function Login() {
           <h2 className="text-2xl font-bold text-gray-800">Hospital Talagante</h2>
           <p className="text-sm text-gray-600">Servicio de Imagenología</p>
         </div>
+
+        <button 
+          type="button"
+          onClick={() => navigate('/registrar-admin')}
+          className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors mb-4"
+        >
+          Registrar Nuevo Adminitrador
+        </button>
         
         <form onSubmit={handleLogin} className="space-y-4">
           <div>

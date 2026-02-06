@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import UploadFile, File
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, extract, and_
 from typing import List, Optional, Dict, Any
@@ -8,6 +9,7 @@ from fastapi.responses import StreamingResponse
 import pandas as pd
 from io import BytesIO
 from datetime import datetime
+from fastapi import UploadFile, File
 
 from ..database import get_db
 from ..models.usuario import Usuario
@@ -623,3 +625,371 @@ def exportar_excel(
             "Content-Disposition": f"attachment; filename=examenes_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
         }
     )
+
+@router.post("/importar-excel")
+async def importar_excel_respaldo(
+    file: UploadFile = File(...),
+    current_user: Usuario = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Importa exámenes desde Excel de respaldo.
+    Solo importa registros que NO existan (evita duplicados por contenido).
+    """
+    import pandas as pd
+    from io import BytesIO
+    from datetime import datetime as dt
+    
+    try:
+        # Verificar que es un archivo Excel
+        if not file.filename.endswith(('.xlsx', '.xls')):
+            raise HTTPException(status_code=400, detail="El archivo debe ser formato Excel (.xlsx o .xls)")
+        
+        # Leer archivo Excel
+        contents = await file.read()
+        excel_data = BytesIO(contents)
+        
+        # Verificar que tiene las 3 hojas requeridas
+        try:
+            xls = pd.ExcelFile(excel_data)
+            hojas_requeridas = {'TAC', 'RX', 'ECO'}
+            hojas_disponibles = set(xls.sheet_names)
+            
+            if not hojas_requeridas.issubset(hojas_disponibles):
+                faltantes = hojas_requeridas - hojas_disponibles
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Formato incorrecto. Faltan hojas: {', '.join(faltantes)}"
+                )
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Error al leer Excel: {str(e)}")
+        
+        # Leer las 3 hojas
+        df_tac = pd.read_excel(excel_data, sheet_name='TAC')
+        df_rx = pd.read_excel(excel_data, sheet_name='RX')
+        df_eco = pd.read_excel(excel_data, sheet_name='ECO')
+        
+        resultados = {
+            "TAC": {"procesados": 0, "importados": 0, "duplicados": 0, "errores": 0, "errores_detalle": []},
+            "RX": {"procesados": 0, "importados": 0, "duplicados": 0, "errores": 0, "errores_detalle": []},
+            "ECO": {"procesados": 0, "importados": 0, "duplicados": 0, "errores": 0, "errores_detalle": []}
+        }
+        
+        # Función auxiliar para verificar duplicados
+        def es_duplicado(tipo, fecha_real, paciente_rut, examen_nombre):
+            return db.query(ExamenBase).join(Paciente).filter(
+                ExamenBase.tipo_examen == tipo,
+                ExamenBase.fecha_realizacion == fecha_real,
+                Paciente.rut == paciente_rut,
+                ExamenBase.deleted_at.is_(None)
+            ).first() is not None
+        
+        # Importar TAC
+        for idx, row in df_tac.iterrows():
+            resultados["TAC"]["procesados"] += 1
+            try:
+                # Verificar campos obligatorios
+                if pd.isna(row.get('Fecha Realización')) or pd.isna(row.get('Paciente RUT')):
+                    resultados["TAC"]["errores"] += 1
+                    resultados["TAC"]["errores_detalle"].append(f"Fila {idx+2}: Faltan datos obligatorios")
+                    continue
+                
+                fecha_realizacion = pd.to_datetime(row['Fecha Realización']).date()
+                rut_paciente = str(row['Paciente RUT']).strip()
+                
+                # Verificar duplicado por contenido
+                if es_duplicado("TAC", fecha_realizacion, rut_paciente, str(row.get('Examen Específico', ''))):
+                    resultados["TAC"]["duplicados"] += 1
+                    continue
+                
+                # Buscar o crear paciente
+                paciente = db.query(Paciente).filter(Paciente.rut == rut_paciente).first()
+                if not paciente:
+                    paciente = Paciente(
+                        rut=rut_paciente,
+                        nombre_completo=str(row.get('Paciente Nombre', 'Sin nombre')),
+                        fecha_nacimiento=pd.to_datetime(row['Fecha Nac.'], errors='ignore') if pd.notna(row.get('Fecha Nac.')) else None
+                    )
+                    db.add(paciente)
+                    db.flush()
+                
+                # Buscar catálogos (sin crear si no existen)
+                prevision = db.query(Prevision).filter(
+                    Prevision.nombre == str(row.get('Previsión', ''))
+                ).first() if pd.notna(row.get('Previsión')) else None
+                
+                procedencia = db.query(Procedencia).filter(
+                    Procedencia.nombre == str(row.get('Procedencia', ''))
+                ).first() if pd.notna(row.get('Procedencia')) else None
+                
+                codigo_mai = db.query(CodigoMAI).filter(
+                    CodigoMAI.codigo == str(row.get('Código', '')),
+                    CodigoMAI.tipo_examen == "TAC"
+                ).first() if pd.notna(row.get('Código')) else None
+                
+                examen_especifico = db.query(ExamenEspecifico).filter(
+                    ExamenEspecifico.nombre == str(row.get('Examen Específico', '')),
+                    ExamenEspecifico.tipo_examen == "TAC"
+                ).first() if pd.notna(row.get('Examen Específico')) else None
+                
+                # Crear ExamenBase
+                mes_realizacion = fecha_realizacion.month
+                anio_realizacion = fecha_realizacion.year
+                
+                examen_base = ExamenBase(
+                    tipo_examen="TAC",
+                    fecha_realizacion=fecha_realizacion,
+                    atencion=str(row.get('Atención', 'Abierta')),
+                    prevision_id=prevision.id if prevision else None,
+                    procedencia_id=procedencia.id if procedencia else None,
+                    paciente_id=paciente.id,
+                    examen_especifico_id=examen_especifico.id if examen_especifico else None,
+                    codigo_mai_id=codigo_mai.id if codigo_mai else None,
+                    contrato=str(row.get('Contrato', '')) if pd.notna(row.get('Contrato')) else None,
+                    mes_realizacion=mes_realizacion,
+                    anio_realizacion=anio_realizacion,
+                    created_by=current_user.id,
+                    created_at=dt.utcnow()
+                )
+                db.add(examen_base)
+                db.flush()
+                
+                # Buscar personal médico
+                protocolo = db.query(ProtocoloTAC).filter(
+                    ProtocoloTAC.nombre == str(row.get('Protocolo', ''))
+                ).first() if pd.notna(row.get('Protocolo')) else None
+                
+                diagnostico = db.query(Diagnostico).filter(
+                    Diagnostico.nombre == str(row.get('Diag. Clínico', ''))
+                ).first() if pd.notna(row.get('Diag. Clínico')) else None
+                
+                medico = db.query(PersonalMedico).filter(
+                    PersonalMedico.nombre == str(row.get('Médico Sol.', ''))
+                ).first() if pd.notna(row.get('Médico Sol.')) else None
+                
+                tm = db.query(PersonalMedico).filter(
+                    PersonalMedico.nombre == str(row.get('TM', ''))
+                ).first() if pd.notna(row.get('TM')) else None
+                
+                tp = db.query(PersonalMedico).filter(
+                    PersonalMedico.nombre == str(row.get('TP', ''))
+                ).first() if pd.notna(row.get('TP')) else None
+                
+                secretaria = db.query(PersonalMedico).filter(
+                    PersonalMedico.nombre == str(row.get('Secretaria', ''))
+                ).first() if pd.notna(row.get('Secretaria')) else None
+                
+                # Crear ExamenTAC
+                examen_tac = ExamenTAC(
+                    examen_base_id=examen_base.id,
+                    fecha_solicitud=pd.to_datetime(row['Fecha Solicitud']).date() if pd.notna(row.get('Fecha Solicitud')) else fecha_realizacion,
+                    hora_realizacion=pd.to_datetime(str(row['Hora']), format='%H:%M:%S', errors='ignore').time() if pd.notna(row.get('Hora')) else None,
+                    edad=int(row['Edad']) if pd.notna(row.get('Edad')) else None,
+                    externo=str(row.get('Externo', '')) if pd.notna(row.get('Externo')) else None,
+                    protocolo_id=protocolo.id if protocolo else None,
+                    cod_acv=str(row.get('Cód. ACV', 'No')).lower() == 'sí',
+                    ges=str(row.get('GES', 'No')).lower() == 'sí',
+                    medio_contraste=str(row.get('MC', 'No')).lower() == 'sí',
+                    vfge=str(row.get('VFGE', '')) if pd.notna(row.get('VFGE')) else None,
+                    premedicado=str(row.get('Premedicado', '')).lower() == 'sí' if pd.notna(row.get('Premedicado')) else None,
+                    diagnostico_clinico_id=diagnostico.id if diagnostico else None,
+                    medico_solicitante_id=medico.id if medico else None,
+                    tm_id=tm.id if tm else None,
+                    tp_id=tp.id if tp else None,
+                    secretaria_id=secretaria.id if secretaria else None,
+                    observacion=str(row.get('Observación', '')) if pd.notna(row.get('Observación')) else None
+                )
+                db.add(examen_tac)
+                
+                resultados["TAC"]["importados"] += 1
+                
+            except Exception as e:
+                resultados["TAC"]["errores"] += 1
+                resultados["TAC"]["errores_detalle"].append(f"Fila {idx+2}: {str(e)}")
+                continue
+        
+        # Importar RX (similar estructura)
+        for idx, row in df_rx.iterrows():
+            resultados["RX"]["procesados"] += 1
+            try:
+                if pd.isna(row.get('Fecha Real.')) or pd.isna(row.get('Paciente RUT')):
+                    resultados["RX"]["errores"] += 1
+                    resultados["RX"]["errores_detalle"].append(f"Fila {idx+2}: Faltan datos obligatorios")
+                    continue
+                
+                fecha_realizacion = pd.to_datetime(row['Fecha Real.']).date()
+                rut_paciente = str(row['Paciente RUT']).strip()
+                
+                if es_duplicado("RX", fecha_realizacion, rut_paciente, str(row.get('Examen Específico', ''))):
+                    resultados["RX"]["duplicados"] += 1
+                    continue
+                
+                paciente = db.query(Paciente).filter(Paciente.rut == rut_paciente).first()
+                if not paciente:
+                    paciente = Paciente(
+                        rut=rut_paciente,
+                        nombre_completo=str(row.get('Paciente Nombre', 'Sin nombre'))
+                    )
+                    db.add(paciente)
+                    db.flush()
+                
+                prevision = db.query(Prevision).filter(
+                    Prevision.nombre == str(row.get('Previsión', ''))
+                ).first() if pd.notna(row.get('Previsión')) else None
+                
+                procedencia = db.query(Procedencia).filter(
+                    Procedencia.nombre == str(row.get('Procedencia', ''))
+                ).first() if pd.notna(row.get('Procedencia')) else None
+                
+                codigo_mai = db.query(CodigoMAI).filter(
+                    CodigoMAI.codigo == str(row.get('Código', '')),
+                    CodigoMAI.tipo_examen == "RX"
+                ).first() if pd.notna(row.get('Código')) else None
+                
+                examen_especifico = db.query(ExamenEspecifico).filter(
+                    ExamenEspecifico.nombre == str(row.get('Examen Específico', '')),
+                    ExamenEspecifico.tipo_examen == "RX"
+                ).first() if pd.notna(row.get('Examen Específico')) else None
+                
+                examen_base = ExamenBase(
+                    tipo_examen="RX",
+                    fecha_realizacion=fecha_realizacion,
+                    atencion=str(row.get('Atención', 'Abierta')),
+                    prevision_id=prevision.id if prevision else None,
+                    procedencia_id=procedencia.id if procedencia else None,
+                    paciente_id=paciente.id,
+                    examen_especifico_id=examen_especifico.id if examen_especifico else None,
+                    codigo_mai_id=codigo_mai.id if codigo_mai else None,
+                    contrato=str(row.get('Contrato', '')) if pd.notna(row.get('Contrato')) else None,
+                    mes_realizacion=fecha_realizacion.month,
+                    anio_realizacion=fecha_realizacion.year,
+                    created_by=current_user.id,
+                    created_at=dt.utcnow()
+                )
+                db.add(examen_base)
+                db.flush()
+                
+                tm_tp = db.query(PersonalMedico).filter(
+                    PersonalMedico.nombre == str(row.get('TM/TP', ''))
+                ).first() if pd.notna(row.get('TM/TP')) else None
+                
+                examen_rx = ExamenRX(
+                    examen_base_id=examen_base.id,
+                    hora_realizacion=pd.to_datetime(str(row['Hora']), format='%H:%M:%S', errors='ignore').time() if pd.notna(row.get('Hora')) else None,
+                    tm_tp_id=tm_tp.id if tm_tp else None
+                )
+                db.add(examen_rx)
+                
+                resultados["RX"]["importados"] += 1
+                
+            except Exception as e:
+                resultados["RX"]["errores"] += 1
+                resultados["RX"]["errores_detalle"].append(f"Fila {idx+2}: {str(e)}")
+                continue
+        
+        # Importar ECO (similar estructura)
+        for idx, row in df_eco.iterrows():
+            resultados["ECO"]["procesados"] += 1
+            try:
+                if pd.isna(row.get('Fecha Real.')) or pd.isna(row.get('Paciente RUT')):
+                    resultados["ECO"]["errores"] += 1
+                    resultados["ECO"]["errores_detalle"].append(f"Fila {idx+2}: Faltan datos obligatorios")
+                    continue
+                
+                fecha_realizacion = pd.to_datetime(row['Fecha Real.']).date()
+                rut_paciente = str(row['Paciente RUT']).strip()
+                
+                if es_duplicado("ECO", fecha_realizacion, rut_paciente, str(row.get('Examen Específico', ''))):
+                    resultados["ECO"]["duplicados"] += 1
+                    continue
+                
+                paciente = db.query(Paciente).filter(Paciente.rut == rut_paciente).first()
+                if not paciente:
+                    paciente = Paciente(
+                        rut=rut_paciente,
+                        nombre_completo=str(row.get('Paciente Nombre', 'Sin nombre'))
+                    )
+                    db.add(paciente)
+                    db.flush()
+                
+                prevision = db.query(Prevision).filter(
+                    Prevision.nombre == str(row.get('Previsión', ''))
+                ).first() if pd.notna(row.get('Previsión')) else None
+                
+                procedencia = db.query(Procedencia).filter(
+                    Procedencia.nombre == str(row.get('Procedencia', ''))
+                ).first() if pd.notna(row.get('Procedencia')) else None
+                
+                codigo_mai = db.query(CodigoMAI).filter(
+                    CodigoMAI.codigo == str(row.get('Código', '')),
+                    CodigoMAI.tipo_examen == "ECO"
+                ).first() if pd.notna(row.get('Código')) else None
+                
+                examen_especifico = db.query(ExamenEspecifico).filter(
+                    ExamenEspecifico.nombre == str(row.get('Examen Específico', '')),
+                    ExamenEspecifico.tipo_examen == "ECO"
+                ).first() if pd.notna(row.get('Examen Específico')) else None
+                
+                examen_base = ExamenBase(
+                    tipo_examen="ECO",
+                    fecha_realizacion=fecha_realizacion,
+                    atencion=str(row.get('Atención', 'Abierta')),
+                    prevision_id=prevision.id if prevision else None,
+                    procedencia_id=procedencia.id if procedencia else None,
+                    paciente_id=paciente.id,
+                    examen_especifico_id=examen_especifico.id if examen_especifico else None,
+                    codigo_mai_id=codigo_mai.id if codigo_mai else None,
+                    contrato=str(row.get('Contrato', '')) if pd.notna(row.get('Contrato')) else None,
+                    mes_realizacion=fecha_realizacion.month,
+                    anio_realizacion=fecha_realizacion.year,
+                    created_by=current_user.id,
+                    created_at=dt.utcnow()
+                )
+                db.add(examen_base)
+                db.flush()
+                
+                diagnostico = db.query(Diagnostico).filter(
+                    Diagnostico.nombre == str(row.get('Diagnóstico', ''))
+                ).first() if pd.notna(row.get('Diagnóstico')) else None
+                
+                realizado = db.query(PersonalMedico).filter(
+                    PersonalMedico.nombre == str(row.get('Realizado', ''))
+                ).first() if pd.notna(row.get('Realizado')) else None
+                
+                transcribe = db.query(PersonalMedico).filter(
+                    PersonalMedico.nombre == str(row.get('Transcribe', ''))
+                ).first() if pd.notna(row.get('Transcribe')) else None
+                
+                examen_eco = ExamenECO(
+                    examen_base_id=examen_base.id,
+                    diagnostico_id=diagnostico.id if diagnostico else None,
+                    realizado_id=realizado.id if realizado else None,
+                    transcribe_id=transcribe.id if transcribe else None
+                )
+                db.add(examen_eco)
+                
+                resultados["ECO"]["importados"] += 1
+                
+            except Exception as e:
+                resultados["ECO"]["errores"] += 1
+                resultados["ECO"]["errores_detalle"].append(f"Fila {idx+2}: {str(e)}")
+                continue
+        
+        db.commit()
+        
+        # Preparar mensaje de respuesta
+        mensaje = f"Importación completada.\n"
+        mensaje += f"TAC: {resultados['TAC']['importados']} importados, {resultados['TAC']['duplicados']} duplicados, {resultados['TAC']['errores']} errores.\n"
+        mensaje += f"RX: {resultados['RX']['importados']} importados, {resultados['RX']['duplicados']} duplicados, {resultados['RX']['errores']} errores.\n"
+        mensaje += f"ECO: {resultados['ECO']['importados']} importados, {resultados['ECO']['duplicados']} duplicados, {resultados['ECO']['errores']} errores."
+        
+        return {
+            "message": mensaje,
+            "resultados": resultados
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error al importar: {str(e)}")

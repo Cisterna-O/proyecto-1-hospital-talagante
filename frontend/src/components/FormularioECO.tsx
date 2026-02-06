@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Combobox from '../components/Combobox';
 import { PersonalCombobox } from '../components/PersonalCombobox';
+import { useLastExamData } from '../hooks/useLastExamData';
 import api from '../api/axios';
 import type { ExamenECOCreate, Catalogo, CodigoMAI, PersonalMedico } from '../types';
 
 export default function FormularioECO() {
     const navigate = useNavigate();
+    const { lastData, saveLastData } = useLastExamData('ECO');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [showConfirm, setShowConfirm] = useState(false);
@@ -18,7 +20,7 @@ export default function FormularioECO() {
     const [diagnosticos, setDiagnosticos] = useState<Catalogo[]>([]);
     const [personalGeneral, setPersonalGeneral] = useState<PersonalMedico[]>([]);
 
-    const [formData, setFormData] = useState<ExamenECOCreate>({
+    const baseFormData: ExamenECOCreate = {
         tipo_examen: 'ECO',
         fecha_realizacion: '',
         atencion: 'Cerrada',
@@ -32,7 +34,24 @@ export default function FormularioECO() {
         diagnostico_id: undefined,
         realizado_id: undefined,
         transcribe_id: undefined
-    });
+    };
+
+    const [formData, setFormData] = useState<ExamenECOCreate>(baseFormData);
+
+    useEffect(() => {
+        if (lastData) {
+            console.log('📝 Aplicando datos guardados ECO:', lastData);
+            setFormData(prev => ({
+                ...prev,
+                atencion: lastData.atencion || prev.atencion,
+                prevision_id: lastData.prevision_id || prev.prevision_id,
+                procedencia_id: lastData.procedencia_id || prev.procedencia_id,
+                contrato: lastData.contrato || prev.contrato,
+                realizado_id: lastData.realizado_id,
+                transcribe_id: lastData.transcribe_id,
+            }));
+        }
+    }, [lastData]);
 
     useEffect(() => {
         loadCatalogos();
@@ -95,6 +114,17 @@ export default function FormularioECO() {
             };
 
             await api.post('/examenes/eco', dataToSend);
+            
+            // Guardar datos para próximo formulario (solo campos permitidos)
+            saveLastData({
+                atencion: formData.atencion,
+                prevision_id: formData.prevision_id,
+                procedencia_id: formData.procedencia_id,
+                contrato: formData.contrato,
+                realizado_id: formData.realizado_id,
+                transcribe_id: formData.transcribe_id
+            });
+
             alert('Examen ECO creado exitosamente');
             navigate('/examenes');
         } catch (err: any) {
@@ -139,6 +169,12 @@ export default function FormularioECO() {
     return (
         <div className="max-w-4xl mx-auto">
             <h1 className="text-2xl font-bold mb-6">Nuevo Examen ECO</h1>
+            
+            {lastData && (
+                <div className="bg-purple-50 border border-purple-200 text-purple-800 p-3 rounded mb-4 text-sm">
+                    ℹ️ Algunos campos se han rellenado automáticamente con los datos del último examen ECO que registraste.
+                </div>
+            )}
             
             <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow space-y-6">
                 <div className="grid grid-cols-2 gap-4">
@@ -228,14 +264,14 @@ export default function FormularioECO() {
                         name="examen_especifico_id"
                         value={formData.examen_especifico_id}
                         onChange={(val) => setFormData(prev => ({ ...prev, examen_especifico_id: val }))}
-                        endpoint="/catalogos/examenes-especificos?tipo_examen=TAC"
+                        endpoint="/catalogos/examenes-especificos?tipo_examen=ECO"
                         createEndpoint="/catalogos/examenes-especificos"
-                        additionalData={{ tipo_examen: 'TAC' }}
+                        additionalData={{ tipo_examen: 'ECO' }}
                         required
                     />
                     
                     <div>
-                        <label className="block text-sm font-medium mb-1">Código MAI *</label>
+                        <label className="block text-sm font-medium mb-1">Código *</label>
                         <select
                             name="codigo_mai_id"
                             value={formData.codigo_mai_id}
@@ -271,7 +307,6 @@ export default function FormularioECO() {
                         onChange={(val) => setFormData(prev => ({ ...prev, diagnostico_id: val }))}
                         endpoint="/catalogos/diagnosticos"
                         createEndpoint="/catalogos/diagnosticos"
-                        required
                     />
                     
                     <PersonalCombobox
@@ -303,4 +338,3 @@ export default function FormularioECO() {
         </div>
     );
 }
-

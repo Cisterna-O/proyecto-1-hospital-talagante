@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Combobox from '../components/Combobox';
 import { PersonalCombobox } from '../components/PersonalCombobox';
+import { useLastExamData } from '../hooks/useLastExamData';
 import api from '../api/axios';
 import type { ExamenRXCreate, Catalogo, CodigoMAI, PersonalMedico } from '../types';
 
 export default function FormularioRX() {
     const navigate = useNavigate();
+    const { lastData, saveLastData } = useLastExamData('RX');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [showConfirm, setShowConfirm] = useState(false);
@@ -17,7 +19,8 @@ export default function FormularioRX() {
     const [examenesEspecificos, setExamenesEspecificos] = useState<Catalogo[]>([]);
     const [personalGeneral, setPersonalGeneral] = useState<PersonalMedico[]>([]);
     
-    const [formData, setFormData] = useState<ExamenRXCreate>({
+    // Definir datos base directamente
+    const baseFormData: ExamenRXCreate = {
         tipo_examen: 'RX',
         fecha_realizacion: '',
         atencion: 'Cerrada',
@@ -30,8 +33,24 @@ export default function FormularioRX() {
         contrato: 'Institucional',
         hora_realizacion: '',
         tm_tp_id: undefined
-    });
+    };
+
+    const [formData, setFormData] = useState<ExamenRXCreate>(baseFormData);
     
+    useEffect(() => {
+        if (lastData) {
+            console.log('📝 Aplicando datos guardados RX:', lastData);
+            setFormData(prev => ({
+                ...prev,
+                atencion: lastData.atencion || prev.atencion,
+                prevision_id: lastData.prevision_id || prev.prevision_id,
+                procedencia_id: lastData.procedencia_id || prev.procedencia_id,
+                contrato: lastData.contrato || prev.contrato,
+                tm_tp_id: lastData.tm_tp_id,
+            }));
+        }
+    }, [lastData]);
+
     useEffect(() => {
         loadCatalogos();
     }, []);
@@ -89,6 +108,16 @@ export default function FormularioRX() {
             }; 
 
             await api.post('/examenes/rx', dataToSend);
+            
+            // Guardar datos para próximo formulario (solo campos permitidos)
+            saveLastData({
+                atencion: formData.atencion,
+                prevision_id: formData.prevision_id,
+                procedencia_id: formData.procedencia_id,
+                contrato: formData.contrato,
+                tm_tp_id: formData.tm_tp_id
+            });
+
             alert('Examen RX creado exitosamente');
             navigate('/examenes');
         } catch (err: any) {
@@ -134,6 +163,12 @@ export default function FormularioRX() {
     return (
         <div className="max-w-4xl mx-auto">
             <h1 className="text-2xl font-bold mb-6">Nuevo Examen RX</h1>
+            
+            {lastData && (
+                <div className="bg-green-50 border border-green-200 text-green-800 p-3 rounded mb-4 text-sm">
+                    ℹ️ Algunos campos se han rellenado automáticamente con los datos del último examen RX que registraste.
+                </div>
+            )}
             
             <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow space-y-6">
                 <div className="grid grid-cols-2 gap-4">
@@ -235,14 +270,14 @@ export default function FormularioRX() {
                         name="examen_especifico_id"
                         value={formData.examen_especifico_id}
                         onChange={(val) => setFormData(prev => ({ ...prev, examen_especifico_id: val }))}
-                        endpoint="/catalogos/examenes-especificos?tipo_examen=TAC"
+                        endpoint="/catalogos/examenes-especificos?tipo_examen=RX"
                         createEndpoint="/catalogos/examenes-especificos"
-                        additionalData={{ tipo_examen: 'TAC' }}
+                        additionalData={{ tipo_examen: 'RX' }}
                         required
                     />
                     
                     <div>
-                        <label className="block text-sm font-medium mb-1">Código MAI *</label>
+                        <label className="block text-sm font-medium mb-1">Código *</label>
                         <select
                             name="codigo_mai_id"
                             value={formData.codigo_mai_id}

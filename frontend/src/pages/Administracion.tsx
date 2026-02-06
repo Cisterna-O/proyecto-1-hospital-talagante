@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
+import { useAuth } from '../context/AuthContext';
 
 interface Usuario {
     id: number;
@@ -13,8 +15,12 @@ interface Usuario {
 }
 
 export default function Administracion() {
+    const { isAdmin } = useAuth();
+    const navigate = useNavigate();
+    
     const [usuarios, setUsuarios] = useState<Usuario[]>([]);
     const [loading, setLoading] = useState(false);
+    const [importando, setImportando] = useState(false);
     const [showForm, setShowForm] = useState(false);
     const [showExamenes, setShowExamenes] = useState<any>(null);
     
@@ -28,8 +34,12 @@ export default function Administracion() {
     });
     
     useEffect(() => {
+        if (!isAdmin) {
+            navigate('/');
+            return;
+        }
         cargarUsuarios();
-    }, []);
+    }, [isAdmin, navigate]);
     
     const cargarUsuarios = async () => {
         setLoading(true);
@@ -106,18 +116,117 @@ export default function Administracion() {
             alert('Error al cargar exámenes');
         }
     };
+
+    /* FUNCIÓN DE IMPORTAR - COMENTADA TEMPORALMENTE
+    const importarExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+            alert('Por favor selecciona un archivo Excel (.xlsx o .xls)');
+            return;
+        }
+
+        if (!confirm('¿Importar exámenes desde este archivo? Los duplicados serán ignorados.')) {
+            e.target.value = '';
+            return;
+        }
+
+        setImportando(true);
+
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await api.post('/reportes/importar-excel', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+
+            const resultados = response.data.resultados;
+            
+            let mensaje = '✅ IMPORTACIÓN COMPLETADA\n\n';
+            mensaje += `📊 TAC:\n`;
+            mensaje += `  • Procesados: ${resultados.TAC.procesados}\n`;
+            mensaje += `  • Importados: ${resultados.TAC.importados}\n`;
+            mensaje += `  • Duplicados: ${resultados.TAC.duplicados}\n`;
+            mensaje += `  • Errores: ${resultados.TAC.errores}\n\n`;
+            
+            mensaje += `📊 RX:\n`;
+            mensaje += `  • Procesados: ${resultados.RX.procesados}\n`;
+            mensaje += `  • Importados: ${resultados.RX.importados}\n`;
+            mensaje += `  • Duplicados: ${resultados.RX.duplicados}\n`;
+            mensaje += `  • Errores: ${resultados.RX.errores}\n\n`;
+            
+            mensaje += `📊 ECO:\n`;
+            mensaje += `  • Procesados: ${resultados.ECO.procesados}\n`;
+            mensaje += `  • Importados: ${resultados.ECO.importados}\n`;
+            mensaje += `  • Duplicados: ${resultados.ECO.duplicados}\n`;
+            mensaje += `  • Errores: ${resultados.ECO.errores}`;
+
+            if (resultados.TAC.errores > 0 || resultados.RX.errores > 0 || resultados.ECO.errores > 0) {
+                mensaje += '\n\n⚠️ Revisa la consola para ver detalles de errores';
+                console.log('Errores TAC:', resultados.TAC.errores_detalle);
+                console.log('Errores RX:', resultados.RX.errores_detalle);
+                console.log('Errores ECO:', resultados.ECO.errores_detalle);
+            }
+
+            alert(mensaje);
+
+        } catch (err: any) {
+            if (err.response?.status === 400) {
+                alert(`❌ Error: ${err.response.data.detail}`);
+            } else {
+                alert('❌ Error al importar el archivo. Verifica que el formato sea correcto.');
+            }
+            console.error('Error completo:', err);
+        } finally {
+            setImportando(false);
+            e.target.value = '';
+        }
+    };
+    */
         
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold">Administración de Usuarios</h1>
-                <button
-                    onClick={() => setShowForm(!showForm)}
-                    className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                >
-                    {showForm ? 'Cancelar' : 'Crear Usuario'}
-                </button>
+                
+                <div className="flex gap-4">
+                    {/* BOTÓN DE IMPORTAR - COMENTADO TEMPORALMENTE
+                    <label className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 cursor-pointer transition-colors">
+                        {importando ? (
+                            <>⏳ Importando...</>
+                        ) : (
+                            <>📥 Importar Respaldo</>
+                        )}
+                        <input
+                            type="file"
+                            accept=".xlsx,.xls"
+                            onChange={importarExcel}
+                            disabled={importando}
+                            className="hidden"
+                        />
+                    </label>
+                    */}
+                    
+                    <button
+                        onClick={() => setShowForm(!showForm)}
+                        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                    >
+                        {showForm ? 'Cancelar' : 'Crear Usuario'}
+                    </button>
+                </div>
             </div>
+
+            {/* MENSAJE DE IMPORTACIÓN - COMENTADO TEMPORALMENTE
+            {importando && (
+                <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
+                    ⏳ Importando exámenes desde Excel... Esto puede tomar unos minutos.
+                </div>
+            )}
+            */}
             
             {showForm && (
                 <form onSubmit={crearUsuario} className="bg-white p-6 rounded-lg shadow mb-6">
@@ -236,7 +345,6 @@ export default function Administracion() {
                                             </button>
                                             <button
                                                 onClick={() => {
-                                                    const accion = user.activo ? 'suspender' : 'activar';
                                                     const mensaje = user.activo
                                                         ? '¿Suspender esta cuenta? El usuario no podrá iniciar sesión mientras esté suspendida.'
                                                         : '¿Activar esta cuenta? El usuario podrá volver a iniciar sesión.';
