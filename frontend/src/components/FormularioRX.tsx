@@ -265,16 +265,6 @@ export default function FormularioRX() {
                         required
                     />
                     
-                    <Combobox
-                        label="Examen Específico"
-                        name="examen_especifico_id"
-                        value={formData.examen_especifico_id}
-                        onChange={(val) => setFormData(prev => ({ ...prev, examen_especifico_id: val }))}
-                        endpoint="/catalogos/examenes-especificos?tipo_examen=RX"
-                        createEndpoint="/catalogos/examenes-especificos"
-                        additionalData={{ tipo_examen: 'RX' }}
-                        required
-                    />
                     
                     <div>
                         <label className="block text-sm font-medium mb-1">Código *</label>
@@ -291,6 +281,18 @@ export default function FormularioRX() {
                             ))}
                         </select>
                     </div>
+
+                    <Combobox
+                        label="Examen Específico"
+                        name="examen_especifico_id"
+                        value={formData.examen_especifico_id}
+                        onChange={(val) => setFormData(prev => ({ ...prev, examen_especifico_id: val }))}
+                        endpoint="/catalogos/examenes-especificos?tipo_examen=RX"
+                        createEndpoint="/catalogos/examenes-especificos"
+                        additionalData={{ tipo_examen: 'RX' }}
+                        required
+                    />
+
                     
                     <div>
                         <label className="block text-sm font-medium mb-1">Contrato *</label>
@@ -307,7 +309,7 @@ export default function FormularioRX() {
                     </div>
                     
                     <PersonalCombobox
-                        label="TM/TP"
+                        label="Realizado por"
                         name="tm_tp_id"
                         value={formData.tm_tp_id}
                         onChange={(val) => setFormData(prev => ({ ...prev, tm_tp_id: val }))}

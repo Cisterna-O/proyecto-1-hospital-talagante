@@ -10,7 +10,7 @@ from .models import (
     Prevision,
     Procedencia,
     CodigoMAI,
-    ProtocoloTAC,
+#    ProtocoloTAC,
     Diagnostico,
     PersonalMedico,
     ExamenEspecifico,

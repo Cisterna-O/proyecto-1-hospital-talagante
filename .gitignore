@@ -1,41 +1,37 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-venv/
-env/
-ENV/
+# Backend
+backend/venv/
+backend/__pycache__/
+backend/.env
+backend/*.db
+backend/*.sqlite3
+backend/**/__pycache__/
 
-# Environment variables
-.env
-.env.local
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
 
-# Database
-*.db
-*.sqlite
+# Base de datos
+*.sql.backup
+backups/
+database/backups/
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
+# Logs
+*.log
+logs/
 
 # OS
 .DS_Store
 Thumbs.db
+*.swp
+*.swo
+*~
 
-# Logs
-*.log
-
-# Node (cuando hagamos frontend)
-node_modules/
-dist/
-build/
-.next/
-
-# Pytest
-.pytest_cache/
-.coverage
-htmlcov/
+# IDE
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj*
+*.sln

@@ -17,7 +17,7 @@ export default function FormularioTAC() {
     const [procedencias, setProcedencias] = useState<Catalogo[]>([]);
     const [codigosTAC, setCodigosTAC] = useState<CodigoMAI[]>([]);
     const [examenesEspecificos, setExamenesEspecificos] = useState<Catalogo[]>([]);
-    const [protocolos, setProtocolos] = useState<Catalogo[]>([]);
+//    const [protocolos, setProtocolos] = useState<Catalogo[]>([]);
     const [diagnosticos, setDiagnosticos] = useState<Catalogo[]>([]);
     const [medicosSolicitantes, setMedicosSolicitantes] = useState<PersonalMedico[]>([]);
     const [tms , setTms] = useState<PersonalMedico[]>([]);
@@ -76,12 +76,12 @@ export default function FormularioTAC() {
     
     const loadCatalogos = async () => {
         try {
-            const [prev, proc, cod, exam, prot, diag, medicos, tm, tp, sec] = await Promise.all([
+            const [prev, proc, cod, exam, diag, medicos, tm, tp, sec] = await Promise.all([
                 api.get('/catalogos/previsiones'),
                 api.get('/catalogos/procedencias'),
                 api.get('/catalogos/codigos-mai?tipo_examen=TAC'),
                 api.get('/catalogos/examenes-especificos?tipo_examen=TAC'),
-                api.get('/catalogos/protocolos-tac'),
+//                api.get('/catalogos/protocolos-tac'),
                 api.get('/catalogos/diagnosticos'),
                 api.get('/catalogos/personal-medico?tipo=MEDICO'),
                 api.get('/catalogos/personal-medico?tipo=TM'),
@@ -93,7 +93,7 @@ export default function FormularioTAC() {
             setProcedencias(proc.data);
             setCodigosTAC(cod.data);
             setExamenesEspecificos(exam.data);
-            setProtocolos(prot.data);
+//            setProtocolos(prot.data);
             setDiagnosticos(diag.data);
             setMedicosSolicitantes(medicos.data);
             setTms(tm.data);
@@ -160,7 +160,7 @@ export default function FormularioTAC() {
             // Limpiar valores 0 a undefined para campos opcionales
             const dataToSend = {
                 ...formData, 
-                protocolo_id: formData.protocolo_id || undefined,
+//                protocolo_id: formData.protocolo_id || undefined,
                 diagnostico_clinico_id: formData.diagnostico_clinico_id || undefined,
                 medico_solicitante_id: formData.medico_solicitante_id || undefined,
                 tm_id: formData.tm_id || undefined,
@@ -365,16 +365,6 @@ export default function FormularioTAC() {
                         required
                     />
                     
-                    <Combobox
-                        label="Examen Específico"
-                        name="examen_especifico_id"
-                        value={formData.examen_especifico_id}
-                        onChange={(val) => setFormData(prev => ({ ...prev, examen_especifico_id: val }))}
-                        endpoint="/catalogos/examenes-especificos?tipo_examen=TAC"
-                        createEndpoint="/catalogos/examenes-especificos"
-                        additionalData={{ tipo_examen: 'TAC' }}
-                        required
-                    />
                     
                     <div>
                         <label className="block text-sm font-medium mb-1">Código *</label>
@@ -391,6 +381,18 @@ export default function FormularioTAC() {
                             ))}
                         </select>
                     </div>
+
+                    <Combobox
+                        label="Examen Específico"
+                        name="examen_especifico_id"
+                        value={formData.examen_especifico_id}
+                        onChange={(val) => setFormData(prev => ({ ...prev, examen_especifico_id: val }))}
+                        endpoint="/catalogos/examenes-especificos?tipo_examen=TAC"
+                        createEndpoint="/catalogos/examenes-especificos"
+                        additionalData={{ tipo_examen: 'TAC' }}
+                        required
+                    />
+
                     
                     <div>
                         <label className="block text-sm font-medium mb-1">Contrato *</label>
@@ -421,14 +423,7 @@ export default function FormularioTAC() {
                         </select>
                     </div>
                     
-                    <Combobox
-                        label="Protocolo"
-                        name="protocolo_id"
-                        value={formData.protocolo_id}
-                        onChange={(val) => setFormData(prev => ({ ...prev, protocolo_id: val }))}
-                        endpoint="/catalogos/protocolos-tac"
-                        createEndpoint="/catalogos/protocolos-tac"
-                    />
+
                     
                     <Combobox
                         label="Diagnóstico Clínico"

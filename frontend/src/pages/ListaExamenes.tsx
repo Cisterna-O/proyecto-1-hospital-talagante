@@ -209,8 +209,8 @@ export default function ListaExamenes() {
                                         <th className="px-2 py-2 text-left">Procedencia</th>
                                         <th className="px-2 py-2 text-left">Paciente RUT</th>
                                         <th className="px-2 py-2 text-left">Paciente Nombre</th>
-                                        <th className="px-2 py-2 text-left">Examen Específico</th>
                                         <th className="px-2 py-2 text-left">Código</th>
+                                        <th className="px-2 py-2 text-left">Examen Específico</th>
                                         <th className="px-2 py-2 text-left">Contrato</th>
                                         <th className="px-2 py-2 text-left">Mes/Año</th>
                                         {/* Columnas específicas TAC */}
@@ -219,7 +219,7 @@ export default function ListaExamenes() {
                                         <th className="px-2 py-2 text-left">Fecha Nac.</th>
                                         <th className="px-2 py-2 text-left">Edad</th>
                                         <th className="px-2 py-2 text-left">Externo</th>
-                                        <th className="px-2 py-2 text-left">Protocolo</th>
+
                                         <th className="px-2 py-2 text-left">Cód. ACV</th>
                                         <th className="px-2 py-2 text-left">GES</th>
                                         <th className="px-2 py-2 text-left">MC</th>
@@ -258,8 +258,8 @@ export default function ListaExamenes() {
                                             <td className="px-2 py-2">{exam.procedencia?.nombre || '-'}</td>
                                             <td className="px-2 py-2 font-mono">{exam.paciente?.rut || '-'}</td>
                                             <td className="px-2 py-2">{exam.paciente?.nombre_completo || '-'}</td>
-                                            <td className="px-2 py-2">{exam.examen_especifico?.nombre || '-'}</td>
                                             <td className="px-2 py-2 font-mono">{exam.codigo_mai?.codigo || '-'}</td>
+                                            <td className="px-2 py-2">{exam.examen_especifico?.nombre || '-'}</td>
                                             <td className="px-2 py-2">{exam.contrato || '-'}</td>
                                             <td className="px-2 py-2">{nombreMes(exam.mes_realizacion)} {exam.anio_realizacion}</td>
                                             {/* Datos específicos TAC */}
@@ -268,7 +268,7 @@ export default function ListaExamenes() {
                                             <td className="px-2 py-2">{exam.paciente?.fecha_nacimiento ? formatearFechaCorta(exam.paciente.fecha_nacimiento) : '-'}</td>
                                             <td className="px-2 py-2">{exam.edad || '-'}</td>
                                             <td className="px-2 py-2">{exam.externo || '-'}</td>
-                                            <td className="px-2 py-2">{exam.protocolo?.nombre || '-'}</td>
+
                                             <td className="px-2 py-2">{exam.cod_acv ? 'Sí' : 'No'}</td>
                                             <td className="px-2 py-2">{exam.ges ? 'Sí' : 'No'}</td>
                                             <td className="px-2 py-2">
@@ -336,13 +336,13 @@ export default function ListaExamenes() {
                                         <th className="px-2 py-2 text-left">Procedencia</th>
                                         <th className="px-2 py-2 text-left">Paciente RUT</th>
                                         <th className="px-2 py-2 text-left">Paciente Nombre</th>
-                                        <th className="px-2 py-2 text-left">Examen Específico</th>
                                         <th className="px-2 py-2 text-left">Código</th>
+                                        <th className="px-2 py-2 text-left">Examen Específico</th>
                                         <th className="px-2 py-2 text-left">Contrato</th>
                                         <th className="px-2 py-2 text-left">Mes/Año</th>
                                         {/* Columnas específicas RX */}
                                         <th className="px-2 py-2 text-left">Hora</th>
-                                        <th className="px-2 py-2 text-left">TM/TP</th>
+                                        <th className="px-2 py-2 text-left">Realizado por</th>
                                         {isAdmin && (
                                             <>
                                                 <th className="px-2 py-2 text-left">Creado el</th>
@@ -370,8 +370,8 @@ export default function ListaExamenes() {
                                             <td className="px-2 py-2">{exam.procedencia?.nombre || '-'}</td>
                                             <td className="px-2 py-2 font-mono">{exam.paciente?.rut || '-'}</td>
                                             <td className="px-2 py-2">{exam.paciente?.nombre_completo || '-'}</td>
-                                            <td className="px-2 py-2">{exam.examen_especifico?.nombre || '-'}</td>
                                             <td className="px-2 py-2 font-mono">{exam.codigo_mai?.codigo || '-'}</td>
+                                            <td className="px-2 py-2">{exam.examen_especifico?.nombre || '-'}</td>
                                             <td className="px-2 py-2">{exam.contrato || '-'}</td>
                                             <td className="px-2 py-2">{nombreMes(exam.mes_realizacion)} {exam.anio_realizacion}</td>
                                             <td className="px-2 py-2">{exam.hora_realizacion || '-'}</td>
@@ -426,8 +426,8 @@ export default function ListaExamenes() {
                                         <th className="px-2 py-2 text-left">Procedencia</th>
                                         <th className="px-2 py-2 text-left">Paciente RUT</th>
                                         <th className="px-2 py-2 text-left">Paciente Nombre</th>
-                                        <th className="px-2 py-2 text-left">Examen Específico</th>
                                         <th className="px-2 py-2 text-left">Código</th>
+                                        <th className="px-2 py-2 text-left">Examen Específico</th>
                                         <th className="px-2 py-2 text-left">Contrato</th>
                                         <th className="px-2 py-2 text-left">Mes/Año</th>
                                         {/* Columnas específicas ECO */}
@@ -461,8 +461,8 @@ export default function ListaExamenes() {
                                             <td className="px-2 py-2">{exam.procedencia?.nombre || '-'}</td>
                                             <td className="px-2 py-2 font-mono">{exam.paciente?.rut || '-'}</td>
                                             <td className="px-2 py-2">{exam.paciente?.nombre_completo || '-'}</td>
-                                            <td className="px-2 py-2">{exam.examen_especifico?.nombre || '-'}</td>
                                             <td className="px-2 py-2 font-mono">{exam.codigo_mai?.codigo || '-'}</td>
+                                            <td className="px-2 py-2">{exam.examen_especifico?.nombre || '-'}</td>
                                             <td className="px-2 py-2">{exam.contrato || '-'}</td>
                                             <td className="px-2 py-2">{nombreMes(exam.mes_realizacion)} {exam.anio_realizacion}</td>
                                             <td className="px-2 py-2">{exam.diagnostico?.nombre || '-'}</td>

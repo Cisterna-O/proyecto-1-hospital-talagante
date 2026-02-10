@@ -46,7 +46,7 @@ export interface Procedencia extends Catalogo {}
 export interface ExamenEspecifico extends Catalogo {
   tipo_examen: 'TAC' | 'RX' | 'ECO';
 }
-export interface ProtocoloTAC extends Catalogo {}
+// export interface ProtocoloTAC extends Catalogo {}
 export interface Diagnostico extends Catalogo {}
 
 export interface PersonalMedico extends Catalogo {
@@ -86,7 +86,7 @@ export interface ExamenTACCreate extends ExamenBaseCreate {
   hora_realizacion: string;
   fecha_nacimiento?: string;
   externo?: 'Ambulatorio' | 'Hospitalizado' | 'Urgencias';
-  protocolo_id?: number;
+//  protocolo_id?: number;
   cod_acv: boolean;
   ges: boolean;
   medio_contraste: boolean;
@@ -139,7 +139,7 @@ export interface ExamenTACCompleto extends ExamenTACResponse {
     fecha_nacimiento?: string;
     edad?: number;
     externo?: string;
-    protocolo?: { id: number; nombre: string };
+//    protocolo?: { id: number; nombre: string };
     cod_acv: boolean;
     ges: boolean;
     medio_contraste: boolean;
@@ -321,7 +321,7 @@ export interface ExamenTACUpdate {
   hora_realizacion?: string;
   fecha_nacimiento?: string;
   externo?: 'Ambulatorio' | 'Hospitalizado' | 'Urgencias';
-  protocolo_id?: number;
+//  protocolo_id?: number;
   cod_acv?: boolean;
   ges?: boolean;
   medio_contraste?: boolean;

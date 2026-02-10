@@ -43,11 +43,11 @@ class CodigoMAIResponse(CodigoMAIBase):
         from_attributes = True
 
 # Protocolo TAC
-class ProtocoloTACCreate(CatalogoBase):
-    pass
+#class ProtocoloTACCreate(CatalogoBase):
+#    pass
 
-class ProtocoloTACResponse(CatalogoResponse):
-    pass
+#class ProtocoloTACResponse(CatalogoResponse):
+#    pass
 
 # Diagnóstico
 class DiagnosticoCreate(BaseModel):

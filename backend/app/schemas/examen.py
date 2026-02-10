@@ -41,7 +41,7 @@ class ExamenTACEspecifico(BaseModel):
     hora_realizacion: time
     fecha_nacimiento: Optional[date] = None
     externo: Optional[str] = Field(None, max_length=50)
-    protocolo_id: Optional[int] = None
+#    protocolo_id: Optional[int] = None
     cod_acv: bool
     ges: bool
     medio_contraste: bool
@@ -152,7 +152,7 @@ class ExamenTACUpdate(BaseModel):
     hora_realizacion: Optional[time] = None
     fecha_nacimiento: Optional[date] = None
     externo: Optional[str] = None
-    protocolo_id: Optional[int] = None
+#    protocolo_id: Optional[int] = None
     cod_acv: Optional[bool] = None
     ges: Optional[bool] = None
     medio_contraste: Optional[bool] = None
@@ -250,7 +250,7 @@ class ExamenTACCompleto(BaseModel):
     
     # Datos específicos TAC
     externo: Optional[str] = None
-    protocolo: Optional[CatalogoSimple] = None
+#    protocolo: Optional[CatalogoSimple] = None
     cod_acv: bool
     ges: bool
     medio_contraste: bool

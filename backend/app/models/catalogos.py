@@ -31,14 +31,14 @@ class CodigoMAI(Base):
     
     examenes = relationship("ExamenBase", back_populates="codigo_mai")
 
-class ProtocoloTAC(Base):
-    __tablename__ = "protocolos_tac"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    nombre = Column(String(150), unique=True, nullable=False)
-    activo = Column(Boolean, default=True)
-    
-    examenes_tac = relationship("ExamenTAC", back_populates="protocolo")
+#class ProtocoloTAC(Base):
+#    __tablename__ = "protocolos_tac"
+#    
+#    id = Column(Integer, primary_key=True, index=True)
+#    nombre = Column(String(150), unique=True, nullable=False)
+#    activo = Column(Boolean, default=True)
+#    
+#    examenes_tac = relationship("ExamenTAC", back_populates="protocolo")
 
 class Diagnostico(Base):
     __tablename__ = "diagnosticos"

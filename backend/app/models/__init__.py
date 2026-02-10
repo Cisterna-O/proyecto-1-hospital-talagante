@@ -4,7 +4,7 @@ from .catalogos import (
     Prevision,
     Procedencia,
     CodigoMAI,
-    ProtocoloTAC,
+#    ProtocoloTAC,
     Diagnostico,
     PersonalMedico
 )
@@ -20,7 +20,7 @@ __all__ = [
     "Prevision",
     "Procedencia",
     "CodigoMAI",
-    "ProtocoloTAC",
+#    "ProtocoloTAC",
     "Diagnostico",
     "PersonalMedico",
     "ExamenEspecifico",

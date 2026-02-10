@@ -16,7 +16,7 @@ from ..models import (
     Prevision,
     Procedencia,
     CodigoMAI,
-    ProtocoloTAC,
+#    ProtocoloTAC,
     Diagnostico
 )
 from ..schemas.examen import (
@@ -151,7 +151,7 @@ def crear_examen_tac(
         fecha_nacimiento=examen_data.fecha_nacimiento,
         edad=edad,
         externo=examen_data.externo,
-        protocolo_id=examen_data.protocolo_id,
+#        protocolo_id=examen_data.protocolo_id,
         cod_acv=examen_data.cod_acv,
         ges=examen_data.ges,
         medio_contraste=examen_data.medio_contraste,
@@ -385,7 +385,7 @@ def listar_examenes_tac_completo(
     resultado = []
     for examen_base in examenes:
         examen_tac = db.query(ExamenTAC).options(
-            joinedload(ExamenTAC.protocolo),
+#            joinedload(ExamenTAC.protocolo),
             joinedload(ExamenTAC.diagnostico_clinico),
             joinedload(ExamenTAC.medico_solicitante),
             joinedload(ExamenTAC.tm),
@@ -415,7 +415,7 @@ def listar_examenes_tac_completo(
             "hora_realizacion": examen_tac.hora_realizacion,
             "edad": examen_tac.edad,
             "externo": examen_tac.externo,
-            "protocolo": examen_tac.protocolo,
+#            "protocolo": examen_tac.protocolo,
             "cod_acv": examen_tac.cod_acv,
             "ges": examen_tac.ges,
             "medio_contraste": examen_tac.medio_contraste,
@@ -514,7 +514,7 @@ def actualizar_examen_tac(
     
     # Separar campos de ExamenBase y ExamenTAC
     campos_base = ['fecha_realizacion', 'atencion', 'prevision_id', 'procedencia_id', 'codigo_mai_id', 'contrato']
-    campos_tac = ['fecha_solicitud', 'hora_realizacion', 'fecha_nacimiento', 'externo', 'protocolo_id', 
+    campos_tac = ['fecha_solicitud', 'hora_realizacion', 'fecha_nacimiento', 'externo', #'protocolo_id', 
                   'cod_acv', 'ges', 'medio_contraste', 'vfge', 'premedicado', 'diagnostico_clinico_id',
                   'medico_solicitante_id', 'tm_id', 'tp_id', 'secretaria_id', 'observacion']
     
@@ -1576,10 +1576,10 @@ def obtener_examen_completo(
             "fecha_nacimiento": examen_tac.fecha_nacimiento.isoformat() if examen_tac.fecha_nacimiento else None,
             "edad": examen_tac.edad,
             "externo": examen_tac.externo,
-            "protocolo": {
-                "id": examen_tac.protocolo.id,
-                "nombre": examen_tac.protocolo.nombre
-            } if examen_tac.protocolo else None,
+#            "protocolo": {
+#                "id": examen_tac.protocolo.id,
+#                "nombre": examen_tac.protocolo.nombre
+#            } if examen_tac.protocolo else None,
             "cod_acv": examen_tac.cod_acv,
             "ges": examen_tac.ges,
             "medio_contraste": examen_tac.medio_contraste,

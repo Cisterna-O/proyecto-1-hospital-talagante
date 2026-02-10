@@ -461,7 +461,8 @@ def exportar_excel(
     headers_tac = [
         "ID", "Fecha Realización", "Fecha Solicitud", "Hora", "Nombre", "RUT",
         "F/Nac", "Edad", "Previsión", "Atención", "Procedencia", "Externo",
-        "Examen", "Código", "Protocolo", "Cód.ACV", "GES", "M.Contraste",
+        "Código", "Examen", #"Protocolo",
+        "Cód.ACV", "GES", "M.Contraste",
         "VFGE", "Premedicado", "Diagnóstico", "Médico Sol.", "TM", "Contrato",
         "TP", "Secretaria", "Observación", "Creado el"
     ]
@@ -477,7 +478,7 @@ def exportar_excel(
     # Datos TAC
     for examen_base in examenes_tac:
         examen_tac = db.query(ExamenTAC).options(
-            joinedload(ExamenTAC.protocolo),
+#            joinedload(ExamenTAC.protocolo),
             joinedload(ExamenTAC.diagnostico_clinico),
             joinedload(ExamenTAC.medico_solicitante),
             joinedload(ExamenTAC.tm),
@@ -498,9 +499,9 @@ def exportar_excel(
             examen_base.atencion,
             examen_base.procedencia.nombre if examen_base.procedencia else '',
             examen_tac.externo if examen_tac.externo else '',
-            examen_base.examen_especifico.nombre if examen_base.examen_especifico else '',
             examen_base.codigo_mai.codigo if examen_base.codigo_mai else '',
-            examen_tac.protocolo.nombre if examen_tac.protocolo else '',
+            examen_base.examen_especifico.nombre if examen_base.examen_especifico else '',
+#            examen_tac.protocolo.nombre if examen_tac.protocolo else '',
             'Sí' if examen_tac.cod_acv else 'No',
             'Sí' if examen_tac.ges else 'No',
             'Sí' if examen_tac.medio_contraste else 'No',
@@ -523,7 +524,7 @@ def exportar_excel(
     
     headers_rx = [
         "ID", "Fecha", "Atención", "Previsión", "Procedencia", "RUT", "Nombre",
-        "Examen", "Código", "Hora", "TM/TP", "Contrato", "Creado el"
+        "Código", "Examen", "Hora", "Realizado por", "Contrato", "Creado el"
     ]
     
     ws_rx.append(headers_rx)
@@ -546,8 +547,8 @@ def exportar_excel(
             examen_base.procedencia.nombre if examen_base.procedencia else '',
             examen_base.paciente.rut if examen_base.paciente else '',
             examen_base.paciente.nombre_completo if examen_base.paciente else '',
-            examen_base.examen_especifico.nombre if examen_base.examen_especifico else '',
             examen_base.codigo_mai.codigo if examen_base.codigo_mai else '',
+            examen_base.examen_especifico.nombre if examen_base.examen_especifico else '',
             str(examen_rx.hora_realizacion) if examen_rx.hora_realizacion else '',
             examen_rx.tm_tp.nombre if examen_rx.tm_tp else '',
             examen_base.contrato if examen_base.contrato else '',
@@ -743,8 +744,8 @@ async def importar_excel_respaldo(
                     prevision_id=prevision.id if prevision else None,
                     procedencia_id=procedencia.id if procedencia else None,
                     paciente_id=paciente.id,
-                    examen_especifico_id=examen_especifico.id if examen_especifico else None,
                     codigo_mai_id=codigo_mai.id if codigo_mai else None,
+                    examen_especifico_id=examen_especifico.id if examen_especifico else None,
                     contrato=str(row.get('Contrato', '')) if pd.notna(row.get('Contrato')) else None,
                     mes_realizacion=mes_realizacion,
                     anio_realizacion=anio_realizacion,
@@ -755,9 +756,9 @@ async def importar_excel_respaldo(
                 db.flush()
                 
                 # Buscar personal médico
-                protocolo = db.query(ProtocoloTAC).filter(
-                    ProtocoloTAC.nombre == str(row.get('Protocolo', ''))
-                ).first() if pd.notna(row.get('Protocolo')) else None
+#                protocolo = db.query(ProtocoloTAC).filter(
+#                    ProtocoloTAC.nombre == str(row.get('Protocolo', ''))
+#                ).first() if pd.notna(row.get('Protocolo')) else None
                 
                 diagnostico = db.query(Diagnostico).filter(
                     Diagnostico.nombre == str(row.get('Diag. Clínico', ''))
@@ -786,7 +787,7 @@ async def importar_excel_respaldo(
                     hora_realizacion=pd.to_datetime(str(row['Hora']), format='%H:%M:%S', errors='ignore').time() if pd.notna(row.get('Hora')) else None,
                     edad=int(row['Edad']) if pd.notna(row.get('Edad')) else None,
                     externo=str(row.get('Externo', '')) if pd.notna(row.get('Externo')) else None,
-                    protocolo_id=protocolo.id if protocolo else None,
+#                    protocolo_id=protocolo.id if protocolo else None,
                     cod_acv=str(row.get('Cód. ACV', 'No')).lower() == 'sí',
                     ges=str(row.get('GES', 'No')).lower() == 'sí',
                     medio_contraste=str(row.get('MC', 'No')).lower() == 'sí',
@@ -858,8 +859,8 @@ async def importar_excel_respaldo(
                     prevision_id=prevision.id if prevision else None,
                     procedencia_id=procedencia.id if procedencia else None,
                     paciente_id=paciente.id,
-                    examen_especifico_id=examen_especifico.id if examen_especifico else None,
                     codigo_mai_id=codigo_mai.id if codigo_mai else None,
+                    examen_especifico_id=examen_especifico.id if examen_especifico else None,
                     contrato=str(row.get('Contrato', '')) if pd.notna(row.get('Contrato')) else None,
                     mes_realizacion=fecha_realizacion.month,
                     anio_realizacion=fecha_realizacion.year,
@@ -870,8 +871,8 @@ async def importar_excel_respaldo(
                 db.flush()
                 
                 tm_tp = db.query(PersonalMedico).filter(
-                    PersonalMedico.nombre == str(row.get('TM/TP', ''))
-                ).first() if pd.notna(row.get('TM/TP')) else None
+                    PersonalMedico.nombre == str(row.get('Realizado por', ''))
+                ).first() if pd.notna(row.get('Realizado por')) else None
                 
                 examen_rx = ExamenRX(
                     examen_base_id=examen_base.id,
@@ -937,8 +938,8 @@ async def importar_excel_respaldo(
                     prevision_id=prevision.id if prevision else None,
                     procedencia_id=procedencia.id if procedencia else None,
                     paciente_id=paciente.id,
-                    examen_especifico_id=examen_especifico.id if examen_especifico else None,
                     codigo_mai_id=codigo_mai.id if codigo_mai else None,
+                    examen_especifico_id=examen_especifico.id if examen_especifico else None,
                     contrato=str(row.get('Contrato', '')) if pd.notna(row.get('Contrato')) else None,
                     mes_realizacion=fecha_realizacion.month,
                     anio_realizacion=fecha_realizacion.year,

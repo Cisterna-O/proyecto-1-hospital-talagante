@@ -8,7 +8,7 @@ from ..models.catalogos import (
     Prevision,
     Procedencia,
     CodigoMAI,
-    ProtocoloTAC,
+    #ProtocoloTAC,
     Diagnostico,
     PersonalMedico
 )
@@ -20,8 +20,8 @@ from ..schemas.catalogos import (
     ProcedenciaResponse,
     CodigoMAICreate,
     CodigoMAIResponse,
-    ProtocoloTACCreate,
-    ProtocoloTACResponse,
+    #ProtocoloTACCreate,
+    #ProtocoloTACResponse,
     DiagnosticoCreate,
     DiagnosticoResponse,
     PersonalMedicoCreate,
@@ -201,40 +201,40 @@ def visor_codigos_mai(
 # ============================================
 # PROTOCOLOS TAC
 # ============================================
-@router.get("/protocolos-tac", response_model=List[ProtocoloTACResponse])
-def listar_protocolos_tac(
-    activo: Optional[bool] = None,
-    db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
-):
-    """Listar protocolos TAC"""
-    query = db.query(ProtocoloTAC)
-    
-    if activo is not None:
-        query = query.filter(ProtocoloTAC.activo == activo)
-    
-    return query.order_by(ProtocoloTAC.nombre).all()
+#@router.get("/protocolos-tac", response_model=List[ProtocoloTACResponse])
+#def listar_protocolos_tac(
+#    activo: Optional[bool] = None,
+#    db: Session = Depends(get_db),
+#    current_user: Usuario = Depends(get_current_user)
+#):
+#    """Listar protocolos TAC"""
+#    query = db.query(ProtocoloTAC)
+#    
+#    if activo is not None:
+#        query = query.filter(ProtocoloTAC.activo == activo)
+#    
+#    return query.order_by(ProtocoloTAC.nombre).all()
 
-@router.post("/protocolos-tac", response_model=ProtocoloTACResponse, status_code=status.HTTP_201_CREATED)
-def crear_protocolo_tac(
-    protocolo_data: ProtocoloTACCreate,
-    db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
-):
-    """Crear nuevo protocolo TAC"""
-    existente = db.query(ProtocoloTAC).filter(ProtocoloTAC.nombre == protocolo_data.nombre).first()
-    if existente:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Protocolo ya existe"
-        )
-    
-    nuevo_protocolo = ProtocoloTAC(nombre=protocolo_data.nombre)
-    db.add(nuevo_protocolo)
-    db.commit()
-    db.refresh(nuevo_protocolo)
-    
-    return nuevo_protocolo
+#@router.post("/protocolos-tac", response_model=ProtocoloTACResponse, status_code=status.HTTP_201_CREATED)
+#def crear_protocolo_tac(
+#    protocolo_data: ProtocoloTACCreate,
+#    db: Session = Depends(get_db),
+#    current_user: Usuario = Depends(get_current_user)
+#):
+#    """Crear nuevo protocolo TAC"""
+#    existente = db.query(ProtocoloTAC).filter(ProtocoloTAC.nombre == protocolo_data.nombre).first()
+#    if existente:
+#        raise HTTPException(
+#            status_code=status.HTTP_400_BAD_REQUEST,
+#            detail="Protocolo ya existe"
+#        )
+#    
+#    nuevo_protocolo = ProtocoloTAC(nombre=protocolo_data.nombre)
+#    db.add(nuevo_protocolo)
+#    db.commit()
+#    db.refresh(nuevo_protocolo)
+#    
+#    return nuevo_protocolo
 
 # ============================================
 # DIAGNÓSTICOS

@@ -1,0 +1,21 @@
+[Unit]
+Description=Hospital Talagante - Sistema de Imagenología
+After=network.target postgresql.service
+
+[Service]
+Type=forking
+User=www-data
+WorkingDirectory=/opt/hospital-talagante
+Environment="PATH=/opt/hospital-talagante/backend/venv/bin"
+
+# Backend
+ExecStartPre=/bin/bash -c 'cd /opt/hospital-talagante/backend && source venv/bin/activate && uvicorn main:app --host 0.0.0.0 --port 8000 &'
+
+# Frontend (compilado)
+ExecStart=/usr/bin/npm run preview --prefix /opt/hospital-talagante/frontend
+
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

@@ -259,16 +259,6 @@ export default function FormularioECO() {
                         required
                     />
                     
-                    <Combobox
-                        label="Examen Específico"
-                        name="examen_especifico_id"
-                        value={formData.examen_especifico_id}
-                        onChange={(val) => setFormData(prev => ({ ...prev, examen_especifico_id: val }))}
-                        endpoint="/catalogos/examenes-especificos?tipo_examen=ECO"
-                        createEndpoint="/catalogos/examenes-especificos"
-                        additionalData={{ tipo_examen: 'ECO' }}
-                        required
-                    />
                     
                     <div>
                         <label className="block text-sm font-medium mb-1">Código *</label>
@@ -285,6 +275,18 @@ export default function FormularioECO() {
                             ))}
                         </select>
                     </div>
+
+                    <Combobox
+                        label="Examen Específico"
+                        name="examen_especifico_id"
+                        value={formData.examen_especifico_id}
+                        onChange={(val) => setFormData(prev => ({ ...prev, examen_especifico_id: val }))}
+                        endpoint="/catalogos/examenes-especificos?tipo_examen=ECO"
+                        createEndpoint="/catalogos/examenes-especificos"
+                        additionalData={{ tipo_examen: 'ECO' }}
+                        required
+                    />
+
                     
                     <div>
                         <label className="block text-sm font-medium mb-1">Contrato *</label>

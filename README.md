@@ -1,99 +1,175 @@
-# 🏥 Sistema de Gestión de Exámenes Médicos - Hospital Talagante
+# 🏥 Sistema de Gestión de Exámenes - Hospital Talagante
 
-Sistema completo para la gestión de exámenes de imagenología (TAC, RX, ECO) con control de usuarios, filtros avanzados, generación de reportes y gráficos estadísticos.
+Sistema completo de gestión de exámenes de imagenología (TAC, RX, ECO) para el Hospital de Talagante.
 
-## 📋 Características
+## 📋 Tabla de Contenidos
 
-- ✅ Gestión de exámenes TAC, RX y ECO
-- ✅ Control de usuarios (Administrador e Ingresador)
-- ✅ Filtros avanzados por fecha, atención, previsión, etc.
-- ✅ Gráficos estadísticos obligatorios y opcionales
-- ✅ Exportación a Excel de exámenes y gráficos
-- ✅ Importación de respaldo desde Excel (sin duplicados)
-- ✅ Autocomplete de pacientes por RUT
-- ✅ Cálculo automático de edad
-- ✅ Sistema de revisión de exámenes
-- ✅ Soft delete (eliminación lógica)
-- ✅ Auditoría completa (created_by, updated_by, timestamps)
-- ✅ Acceso desde red local (múltiples dispositivos)
-- ✅ Auto-inicio rápido después de cortes de luz
-- ✅ Registro de administradores con clave secreta
+- [Descripción General](#-descripción-general)
+- [Características Principales](#-características-principales)
+- [Tecnologías Utilizadas](#-tecnologías-utilizadas)
+- [Requisitos Previos](#-requisitos-previos)
+- [Instalación](#-instalación)
+- [Configuración](#-configuración)
+- [Uso](#-uso)
+- [Estructura del Proyecto](#-estructura-del-proyecto)
+- [Scripts Útiles](#-scripts-útiles)
+- [Mantenimiento](#-mantenimiento)
+- [Solución de Problemas](#-solución-de-problemas)
 
-## 🛠️ Tecnologías
+---
 
-**Backend:**
-- Python 3.11+
-- FastAPI
-- PostgreSQL 14+
-- SQLAlchemy
-- Pandas & OpenPyXL
+## 📖 Descripción General
 
-**Frontend:**
-- React 19
-- TypeScript
-- Vite
-- Tailwind CSS
-- Chart.js
+Sistema web integral para la gestión de exámenes de imagenología en el Hospital de Talagante. Permite registrar, consultar, editar y generar reportes de exámenes TAC, RX y ECO, con gestión de usuarios, pacientes, catálogos y estadísticas completas.
 
-## 📥 Instalación
+### Tipos de Exámenes Soportados:
+- **TAC** (Tomografía Axial Computarizada): 27 campos específicos
+- **RX** (Radiografía): 13 campos específicos  
+- **ECO** (Ecografía): 14 campos específicos
 
-### Prerrequisitos
+---
 
-Descargar e instalar en este orden:
+## ✨ Características Principales
 
-1. **Python 3.11 o superior**
-   - Descarga: https://www.python.org/downloads/
-   - ⚠️ IMPORTANTE: Durante instalación marcar ☑️ "Add Python to PATH"
+### 👥 Gestión de Usuarios
+- Sistema de roles: **Administrador** e **Ingresador**
+- Autenticación con JWT
+- Cambio obligatorio de contraseña en primer login
+- Registro de administradores con clave secreta
 
-2. **Node.js 18 o superior**
-   - Descarga: https://nodejs.org/
-   - Incluye npm automáticamente
+### 📝 Gestión de Exámenes
+- Formularios específicos por tipo de examen (TAC/RX/ECO)
+- Autocompletado de pacientes por RUT
+- Autocompletado inteligente de formularios (últimos datos por usuario)
+- Creación inline de catálogos
+- Validaciones automáticas
+- Soft delete (exámenes suspendidos)
+- Sistema de revisión para administradores
 
-3. **PostgreSQL 14 o superior**
-   - Windows: https://www.postgresql.org/download/windows/
-   - Linux: `sudo apt install postgresql postgresql-contrib`
-   - Mac: `brew install postgresql@14`
-   - ⚠️ IMPORTANTE: Recordar contraseña del usuario `postgres`
+### 📊 Reportes y Estadísticas
+- **18 gráficos obligatorios** (carga automática)
+- **15 gráficos opcionales** personalizables
+- Exportación/importación Excel
+- Filtros avanzados por fecha, atención, contrato, etc.
+- Visualización con Chart.js
 
-4. **Git** (opcional, si clonas desde GitHub)
-   - Descarga: https://git-scm.com/downloads
+### 🗂️ Catálogos
+- Previsiones (14 predefinidas)
+- Procedencias (35 predefinidas)
+- Códigos MAI por tipo (TAC: 28, RX: 23, ECO: 23)
+- Exámenes específicos (TAC: ~150, RX: ~80, ECO: ~180)
+- Diagnósticos
+- Personal médico (TM, TP, Médicos, Secretarias)
 
-### Paso 1: Obtener el Proyecto
+---
 
-**Opción A: Clonar desde GitHub**
+## 🛠️ Tecnologías Utilizadas
+
+### Backend
+- **Python 3.11+**
+- **FastAPI** - Framework web moderno y rápido
+- **SQLAlchemy** - ORM para PostgreSQL
+- **PostgreSQL** - Base de datos relacional
+- **Pydantic** - Validación de datos
+- **JWT** - Autenticación segura
+- **bcrypt** - Hash de contraseñas
+- **openpyxl** - Exportación/importación Excel
+
+### Frontend
+- **React 19** + **TypeScript**
+- **Vite** - Build tool
+- **React Router DOM 7** - Navegación
+- **Axios** - Cliente HTTP
+- **Tailwind CSS** - Estilos
+- **Chart.js 4.5** - Gráficos
+
+### Base de Datos
+- **PostgreSQL 14+**
+- Esquema normalizado con 12 tablas
+- Índices optimizados
+- Triggers automáticos
+- Soft delete implementado
+
+---
+
+## 📦 Requisitos Previos
+
+### Software Necesario:
+- **Node.js 18+** ([Descargar](https://nodejs.org/))
+- **Python 3.11+** ([Descargar](https://www.python.org/))
+- **PostgreSQL 14+** ([Descargar](https://www.postgresql.org/))
+- **Git** ([Descargar](https://git-scm.com/))
+
+### Verificar Instalación:
 ```bash
-git clone https://github.com/Cisterna-O/proyecto-1-hospital-talagante.git
-cd hospital-talagante/Proyecto
+node --version    # Debe ser 18+
+python --version  # Debe ser 3.11+
+psql --version    # Debe ser 14+
+git --version
 ```
 
-**Opción B: Descargar ZIP**
-1. Descargar ZIP desde GitHub
-2. Extraer en la ubicación deseada
-3. Abrir terminal en carpeta `Proyecto/`
+---
 
-### Paso 2: Configurar Base de Datos
+## 🚀 Instalación
 
-#### Windows (pgAdmin):
-1. Abrir **pgAdmin**
-2. Conectarse al servidor PostgreSQL
-3. Click derecho en "Databases" → Create → Database
-4. Nombre: `hospital_talagante`
-5. Click derecho en `hospital_talagante` → Query Tool
-6. Abrir archivo `schema.sql` (File → Open)
-7. Ejecutar (⚡ o F5)
+### Opción 1: Instalación Automática (Recomendado)
 
-#### Linux/Mac (Terminal):
+#### Windows:
+```batch
+# Ejecutar como Administrador
+INICIAR_TODO.bat
+```
+
+#### Linux/Mac:
 ```bash
+chmod +x iniciar_todo.sh
+./iniciar_todo.sh
+```
+
+Este script automáticamente:
+1. ✅ Verifica requisitos
+2. ✅ Crea la base de datos
+3. ✅ Instala dependencias backend y frontend
+4. ✅ Configura variables de entorno
+5. ✅ Inicia el sistema completo
+
+---
+
+### Opción 2: Instalación Manual
+
+#### 1. Clonar el Repositorio
+```bash
+git clone https://github.com/tu-usuario/hospital-talagante.git
+cd hospital-talagante
+```
+
+#### 2. Configurar Base de Datos
+```bash
+# Conectarse a PostgreSQL
+psql -U postgres
+
 # Crear base de datos
-sudo -u postgres psql -c "CREATE DATABASE hospital_talagante;"
+CREATE DATABASE hospital_talagante;
 
-# Cargar schema
-sudo -u postgres psql -d hospital_talagante -f schema.sql
+# Salir
+\q
+
+# Cargar esquema con codificación UTF-8
+# Windows PowerShell:
+$env:PGCLIENTENCODING="UTF8"
+psql -U postgres -d hospital_talagante -f database/schema.sql
+
+# Linux/Mac:
+PGCLIENTENCODING=UTF8 psql -U postgres -d hospital_talagante -f database/schema.sql
+
+# Cargar códigos MAI (seeds)
+psql -U postgres -d hospital_talagante -f database/seeds/codigos_tac.sql
+psql -U postgres -d hospital_talagante -f database/seeds/codigos_rx.sql
+psql -U postgres -d hospital_talagante -f database/seeds/codigos_eco.sql
 ```
 
-### Paso 3: Configurar Backend
+#### 3. Configurar Backend
 ```bash
-# Navegar a carpeta backend
 cd backend
 
 # Crear entorno virtual
@@ -107,636 +183,412 @@ source venv/bin/activate
 
 # Instalar dependencias
 pip install -r requirements.txt
+
+# Configurar variables de entorno
+cp .env.example .env
+# Editar .env con tus valores
 ```
 
-### Paso 4: Configurar Variables de Entorno
-
-Crear archivo `.env` en `backend/` (copiar desde `.env.example`):
-```env
-# BASE DE DATOS
-DATABASE_URL=postgresql://postgres:TU_PASSWORD@localhost:5432/hospital_talagante
-
-# SEGURIDAD
-SECRET_KEY=cambiar-por-clave-segura-aleatoria-32-caracteres-minimo
-ADMIN_SECRET_KEY=clave-super-secreta-para-crear-nuevos-administradores
-
-# CORS - Acceso desde red local
-# Agregar todas las IPs desde donde se accederá
-CORS_ORIGINS=http://localhost:5173,http://IP:5173,http://IP:8000
-```
-
-**⚠️ IMPORTANTE:**
-- Cambiar `TU_PASSWORD` por tu contraseña de PostgreSQL
-- Cambiar `SECRET_KEY` por una clave única (puedes generarla con: `python -c "import secrets; print(secrets.token_urlsafe(32))"`)
-- El `ADMIN_SECRET_KEY` se usará para crear nuevos administradores
-- Agregar tu IP local a `CORS_ORIGINS` (ver sección "Uso en Red Local")
-
-### Paso 5: Configurar Frontend
+#### 4. Configurar Frontend
 ```bash
-# Navegar a carpeta frontend
 cd ../frontend
 
 # Instalar dependencias
 npm install
+
+# Configurar variables (opcional)
+# Editar vite.config.ts si es necesario
 ```
-
-### Paso 6: Crear Primer Administrador
-
-**Opción A: Desde la interfaz web (RECOMENDADO)**
-
-1. Iniciar backend y frontend (ver siguiente paso)
-2. Ir a `http://localhost:5173`
-3. Click en "Registrar Nuevo Administrador"
-4. Completar formulario con:
-   - RUT: Tu RUT
-   - Nombre completo
-   - Email
-   - Celular
-   - Contraseña (mínimo 8 caracteres)
-   - Clave secreta: El `ADMIN_SECRET_KEY` que pusiste en `.env`
-5. Click "Registrar Administrador"
-6. Volver al login e iniciar sesión
-
-**Opción B: Desde FastAPI Docs**
-
-1. Ir a `http://localhost:8000/docs`
-2. Buscar `/auth/crear-admin-inicial`
-3. Click "Try it out"
-4. Completar JSON y ejecutar
-
-## 🚀 Iniciar el Sistema
-
-### OPCIÓN 1: Inicio Automático (RECOMENDADO)
-
-#### Windows:
-```bash
-# Doble click en:
-INICIAR_TODO.bat
-```
-
-Esto:
-- ✅ Verifica que PostgreSQL esté corriendo
-- ✅ Inicia Backend automáticamente
-- ✅ Inicia Frontend automáticamente
-- ✅ Abre el navegador en la aplicación
-- ✅ Todo con un solo click
-
-#### Linux/Mac:
-```bash
-# Dar permisos la primera vez:
-chmod +x iniciar_todo.sh
-
-# Ejecutar:
-./iniciar_todo.sh
-```
-
-Para detener: Presionar `Ctrl+C` en la terminal
-
-### OPCIÓN 2: Inicio Manual
-
-**Terminal 1 - Backend:**
-```bash
-cd backend
-# Windows:
-venv\Scripts\activate
-# Linux/Mac:
-source venv/bin/activate
-
-# Iniciar servidor
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-**Terminal 2 - Frontend:**
-```bash
-cd frontend
-npm run dev -- --host 0.0.0.0
-```
-
-### URLs de Acceso
-
-- **Frontend (Aplicación):** http://localhost:5173
-- **Backend API:** http://localhost:8000
-- **Documentación API:** http://localhost:8000/docs (solo desde localhost)
-
-## 🌐 Uso en Red Local
-
-### Configuración para acceso desde otros dispositivos
-
-1. **Obtener tu IP local:**
-
-**Windows:**
-```bash
-# Doble click en:
-OBTENER_IP.bat
-
-# O manualmente:
-ipconfig
-# Buscar "Dirección IPv4" en tu adaptador de red activo
-```
-
-**Linux/Mac:**
-```bash
-# Ejecutar script:
-./obtener_ip.sh
-
-# O manualmente:
-ifconfig  # o: ip addr
-```
-
-Ejemplo de IP: `192.168.1.100`
-
-2. **Configurar Firewall (Windows):**
-```bash
-# Ejecutar como Administrador:
-CONFIGURAR_FIREWALL.bat
-```
-
-Esto abre los puertos 8000 (Backend) y 5173 (Frontend)
-
-**Linux:**
-```bash
-sudo ufw allow 8000
-sudo ufw allow 5173
-```
-
-3. **Actualizar CORS en `.env`:**
-```env
-CORS_ORIGINS=http://localhost:5173,http://192.168.1.100:5173,http://192.168.1.100:8000
-```
-
-Reemplazar `192.168.1.100` con tu IP real.
-
-4. **Reiniciar el sistema**
-
-5. **Acceder desde otros dispositivos:**
-
-En cualquier dispositivo en la misma red WiFi/LAN:
-```
-http://192.168.1.100:5173
-```
-
-### Crear URL personalizada (opcional)
-
-Para usar `http://hospital.local` en vez de la IP:
-
-**En el servidor (editar como Administrador):**
-
-Windows: `C:\Windows\System32\drivers\etc\hosts`
-Linux/Mac: `/etc/hosts`
-
-Agregar línea:
-```
-192.168.1.100    hospital.local
-```
-
-Actualizar CORS:
-```env
-CORS_ORIGINS=http://localhost:5173,http://hospital.local:5173
-```
-
-Acceder desde: `http://hospital.local:5173`
-
-## ⚡ Auto-inicio después de Corte de Luz (o similares)
-
-### Windows - Tarea Programada
-
-1. Abrir "Programador de tareas"
-2. Crear tarea básica:
-   - Nombre: "Hospital Talagante"
-   - Desencadenador: "Al iniciar el equipo"
-   - Acción: "Iniciar programa"
-   - Programa: `C:\ruta\completa\Proyecto\INICIAR_TODO.bat`
-3. Guardar
-
-### Linux - Systemd Service
-```bash
-# Copiar archivo de servicio
-sudo cp hospital-talagante.service /etc/systemd/system/
-
-# Editar el archivo para poner rutas correctas
-sudo nano /etc/systemd/system/hospital-talagante.service
-
-# Habilitar auto-inicio
-sudo systemctl daemon-reload
-sudo systemctl enable hospital-talagante
-sudo systemctl start hospital-talagante
-
-# Ver estado
-sudo systemctl status hospital-talagante
-```
-
-## 📂 Estructura del Proyecto
-```
-Proyecto/
-├── backend/
-│   ├── app/
-│   │   ├── models/          # Modelos SQLAlchemy (tablas DB)
-│   │   ├── routers/         # Endpoints FastAPI (API)
-│   │   ├── schemas/         # Schemas Pydantic (validación)
-│   │   ├── middleware/      # Autenticación JWT
-│   │   ├── utils/           # Funciones auxiliares
-│   │   ├── config.py        # Configuración general
-│   │   ├── database.py      # Conexión a PostgreSQL
-│   │   └── main.py          # Aplicación principal
-│   ├── .env                 # Variables de entorno (CREAR)
-│   ├── .env.example         # Plantilla de .env
-│   ├── requirements.txt     # Dependencias Python
-│   ├── start_server.bat     # Inicio rápido Windows
-│   └── venv/                # Entorno virtual Python
-├── frontend/
-│   ├── src/
-│   │   ├── api/             # Configuración Axios
-│   │   ├── components/      # Componentes React reutilizables
-│   │   ├── context/         # Context API (autenticación)
-│   │   ├── pages/           # Páginas de la aplicación
-│   │   ├── types/           # TypeScript interfaces
-│   │   ├── utils/           # Funciones auxiliares
-│   │   ├── App.tsx          # Componente principal
-│   │   └── main.tsx         # Punto de entrada
-│   ├── public/
-│   │   ├── hospital-logo.svg # Logo del hospital
-│   │   └── favicon.ico      # Ícono del navegador
-│   ├── package.json         # Dependencias npm
-│   ├── vite.config.ts       # Configuración Vite
-│   └── start_frontend.bat   # Inicio rápido Windows
-├── schema.sql               # Schema inicial de la base de datos
-├── reset_database.sql       # Script para resetear BD
-├── INICIAR_TODO.bat         # Inicio automático Windows
-├── iniciar_todo.sh          # Inicio automático Linux/Mac
-├── OBTENER_IP.bat           # Ver IP local Windows
-├── obtener_ip.sh            # Ver IP local Linux/Mac
-├── CONFIGURAR_FIREWALL.bat  # Abrir puertos Windows
-├── hospital-talagante.service # Servicio systemd Linux
-└── README.md                # Este archivo
-```
-
-## 📊 Funcionalidades del Sistema
-
-### Roles de Usuario
-
-**Administrador:**
-- Acceso completo al sistema
-- Crear/editar/eliminar cualquier examen
-- Gestionar usuarios (crear Ingresadores)
-- Ver todos los exámenes (incluidos suspendidos)
-- Exportar a Excel
-- Acceso a gráficos y estadísticas
-- Importar respaldos desde Excel
-- Suspender/reactivar exámenes de usuarios
-
-**Ingresador:**
-- Crear exámenes (TAC, RX, ECO)
-- Editar solo sus propios exámenes
-- Ver lista básica de exámenes
-- Ver códigos MAI
-- Sin acceso a administración ni gráficos
-
-### Gráficos Disponibles
-
-**Obligatorios (18):**
-- Código × Atención (TAC/RX/ECO) - 3 gráficos
-- Procedencia × Atención (TAC/RX/ECO) - 3 gráficos
-- Código × Previsión (TAC/RX/ECO) - 3 gráficos
-- Atención × Contrato (TAC/RX/ECO) - 3 gráficos
-- Mes × Año (TAC/RX/ECO) - 3 gráficos
-- Mes × Medio Contraste - Año Actual
-- Mes × Año - Medio Contraste
-- Mes × Tipo Examen - Año Actual
-
-**Opcionales (15):**
-- Código × Atención (periodo personalizado)
-- Procedencia × Atención (periodo)
-- Código × Previsión (periodo)
-- Atención × Contrato (periodo)
-- Mes × Atención × Año específico
-- Mes × Medio Contraste × Año específico
-- Mes × Atención × Contrato
-- Mes × Tipo Examen × Año
-- Mes × Atención × Personal (7 variantes: Médico, TM, TP, Secretaria, Realizado, Transcribe)
-
-Todos los gráficos:
-- Se muestran como gráficos de barras
-- Incluyen tabla de datos
-- Permiten ocultar/mostrar
-- Se pueden exportar a Excel
-
-### Exportación a Excel
-
-**Exportar Exámenes:**
-- Desde "Lista de Exámenes"
-- Genera 3 hojas: TAC, RX, ECO
-- Incluye TODAS las columnas
-- Filtrable por mes/año específico
-- Opción de aplicar filtros avanzados
-
-**Exportar Gráficos:**
-- Desde "Gráficos"
-- Exporta todos los gráficos obligatorios
-- Una hoja por gráfico
-- Incluye fila y columna de TOTALES
-- Meses mostrados como nombres
-
-### Importar Respaldo
-
-**Desde Administración:**
-1. Click en "Importar Respaldo"
-2. Seleccionar archivo Excel de exportación
-3. El sistema:
-   - Lee las 3 hojas (TAC, RX, ECO)
-   - Verifica duplicados por ID
-   - Solo importa exámenes nuevos
-   - Crea pacientes si no existen
-   - Relaciona con catálogos existentes
-   - Muestra resumen: procesados, importados, duplicados, errores
-
-**Casos de uso:**
-- Migrar a nuevo servidor
-- Recuperar después de fallo
-- Consolidar datos de múltiples fuentes
-
-## 🔄 Mantenimiento
-
-### Resetear Base de Datos
-
-**⚠️ ADVERTENCIA: Esto elimina TODOS los datos**
-```bash
-# Windows (pgAdmin):
-# Query Tool → Abrir reset_database.sql → Ejecutar
-# Query Tool → Abrir schema.sql → Ejecutar
-
-# Linux/Mac:
-sudo -u postgres psql -d hospital_talagante -f reset_database.sql
-sudo -u postgres psql -d hospital_talagante -f schema.sql
-```
-
-Luego crear nuevo administrador.
-
-### Backup de Base de Datos
-
-**Backup manual:**
-```bash
-# Windows:
-"C:\Program Files\PostgreSQL\14\bin\pg_dump.exe" -U postgres hospital_talagante > backup.sql
-
-# Linux/Mac:
-pg_dump -U postgres hospital_talagante > backup.sql
-```
-
-**Restaurar backup:**
-```bash
-# Windows:
-"C:\Program Files\PostgreSQL\14\bin\psql.exe" -U postgres hospital_talagante < backup.sql
-
-# Linux/Mac:
-psql -U postgres hospital_talagante < backup.sql
-```
-
-**Backup automático (Linux):**
-
-Crear cron job:
-```bash
-crontab -e
-
-# Agregar línea (backup diario a las 2 AM):
-0 2 * * * pg_dump -U postgres hospital_talagante > /ruta/backups/hospital_$(date +\%Y\%m\%d).sql
-```
-
-### Actualizar desde GitHub
-```bash
-cd Proyecto
-git pull origin main
-
-# Actualizar backend
-cd backend
-source venv/bin/activate  # o venv\Scripts\activate en Windows
-pip install -r requirements.txt
-
-# Actualizar frontend
-cd ../frontend
-npm install
-
-# Reiniciar sistema
-```
-
-## 🐛 Solución de Problemas
-
-### Error: "No se puede conectar a la base de datos"
-
-**Verificar:**
-1. PostgreSQL está corriendo:
-   - Windows: Servicios → postgresql-x64-XX → Estado
-   - Linux: `sudo systemctl status postgresql`
-   - Mac: `brew services list`
-2. Credenciales en `.env` son correctas
-3. Base de datos `hospital_talagante` existe
-4. Puerto 5432 no está bloqueado
-
-**Solución:**
-```bash
-# Iniciar PostgreSQL
-# Windows: Servicios → Iniciar
-# Linux:
-sudo systemctl start postgresql
-# Mac:
-brew services start postgresql
-```
-
-### Error: "CORS policy"
-
-**Causa:** El frontend intenta acceder al backend desde una IP no permitida.
-
-**Solución:**
-1. Editar `backend/.env`
-2. Agregar la IP a `CORS_ORIGINS`:
-```env
-CORS_ORIGINS=http://localhost:5173,http://192.168.1.X:5173
-```
-3. Reiniciar backend
-
-### Error: "Port already in use"
-
-**Puerto 8000 ocupado:**
-```bash
-# Cambiar puerto en comando de inicio:
-uvicorn app.main:app --port 8001
-
-# O encontrar y matar proceso:
-# Windows:
-netstat -ano | findstr :8000
-taskkill /PID NUMERO_PID /F
-
-# Linux/Mac:
-lsof -i :8000
-kill -9 PID
-```
-
-**Puerto 5173 ocupado:**
-```bash
-# Cambiar en vite.config.ts:
-server: { port: 5174 }
-```
-
-### Error: "Module not found"
-
-**Backend:**
-```bash
-cd backend
-source venv/bin/activate
-pip install -r requirements.txt --force-reinstall
-```
-
-**Frontend:**
-```bash
-cd frontend
-rm -rf node_modules package-lock.json
-npm install
-```
-
-### Sistema lento o no responde
-
-**Verificar recursos:**
-- PostgreSQL consumiendo mucha RAM → Ajustar `shared_buffers` en `postgresql.conf`
-- Muchos exámenes en BD → Ejecutar `VACUUM ANALYZE` en PostgreSQL
-- Filtros muy amplios → Usar filtros más específicos
-
-**Optimizar:**
-```sql
--- En pgAdmin Query Tool:
-VACUUM ANALYZE;
-REINDEX DATABASE hospital_talagante;
-```
-
-### No puedo crear administrador
-
-**Si olvidaste ADMIN_SECRET_KEY:**
-1. Editar `backend/.env`
-2. Cambiar `ADMIN_SECRET_KEY` por una nueva clave
-3. Reiniciar backend
-4. Usar la nueva clave para registrar admin
-
-### Frontend no carga después de actualización
-```bash
-cd frontend
-npm run build
-rm -rf node_modules
-npm install
-npm run dev
-```
-
-## 🔒 Seguridad
-
-### Recomendaciones
-
-**Producción:**
-- ✅ Cambiar `SECRET_KEY` a una clave aleatoria fuerte
-- ✅ Usar HTTPS (certificado SSL)
-- ✅ Configurar firewall correctamente
-- ✅ Backups automáticos diarios
-- ✅ Actualizar dependencias regularmente
-- ✅ Logs de auditoría activados
-- ✅ PostgreSQL con contraseña fuerte
-- ✅ No compartir `.env` ni subirlo a Git
-
-**Red Local:**
-- ✅ Solo permitir IPs conocidas en CORS
-- ✅ Red WiFi con WPA2/WPA3
-- ✅ Firewall del servidor activo
-- ✅ /docs bloqueado desde IPs externas
-
-### Cambiar Contraseñas
-
-**Usuario:**
-- Desde "Perfil" → "Cambiar Contraseña"
-
-**Admin Secret Key:**
-1. Editar `backend/.env`
-2. Cambiar `ADMIN_SECRET_KEY`
-3. Comunicar nueva clave a administradores autorizados
-4. Reiniciar backend
-
-**PostgreSQL:**
-```sql
-ALTER USER postgres WITH PASSWORD 'nueva_contraseña_segura';
-```
-Luego actualizar `DATABASE_URL` en `.env`
-
-## 📝 Personalización
-
-### Cambiar Logo
-
-1. Reemplazar `frontend/public/hospital-logo.svg`
-2. Reemplazar `frontend/public/favicon.ico`
-3. Refrescar navegador (Ctrl+F5)
-
-### Cambiar Nombre
-
-**Título del navegador:** `frontend/index.html`
-```html
-<title>Tu Hospital - Gestión de Exámenes</title>
-```
-
-**Nombre en interfaz:** `frontend/src/components/Layout.tsx`
-```typescript
-<h1 className="text-xl font-bold">Tu Hospital</h1>
-```
-
-### Cambiar Colores
-
-**Tema principal:** `frontend/tailwind.config.js`
-```javascript
-theme: {
-  extend: {
-    colors: {
-      primary: '#1e40af',  // Azul principal
-      secondary: '#10b981', // Verde secundario
-    }
-  }
-}
-```
-
-## 📄 Licencia
-
-Este proyecto es de uso interno para Hospital Talagante.
-
-## 🤝 Soporte
-
-Para consultas técnicas o problemas:
-- Email: soporte@hospital.cl
-- Teléfono: +56 X XXXX XXXX
-
-## 📌 Checklist de Instalación
-
-Antes de usar en producción, verificar:
-
-- [ ] PostgreSQL instalado y corriendo
-- [ ] Base de datos creada y schema cargado
-- [ ] Python 3.11+ instalado con PATH configurado
-- [ ] Node.js 18+ instalado
-- [ ] Archivo `.env` configurado correctamente
-- [ ] SECRET_KEY cambiada (no usar la de ejemplo)
-- [ ] Administrador inicial creado
-- [ ] Firewall configurado (puertos 8000 y 5173)
-- [ ] CORS configurado con IPs correctas
-- [ ] Sistema inicia correctamente con script automático
-- [ ] Acceso desde red local funciona
-- [ ] Backup automático configurado
-- [ ] Auto-inicio después de corte de luz configurado
-
-## 🎯 Próximos Pasos
-
-Después de la instalación:
-
-1. **Crear usuarios Ingresadores** desde Administración
-2. **Configurar catálogos** (Personal Médico, Protocolos, Diagnósticos)
-3. **Cargar pacientes frecuentes** para autocomplete
-4. **Probar desde dispositivos en red local**
-5. **Configurar backups automáticos**
-6. **Crear respaldo inicial** antes de uso intensivo
-7. **Documentar ADMIN_SECRET_KEY** en lugar seguro
-8. **Capacitar usuarios** en uso del sistema
 
 ---
 
-**Versión:** 1.4.0  
-**Última actualización:** Febrero 2026  
-**Desarrollado para:** Hospital Talagante
+## ⚙️ Configuración
+
+### Variables de Entorno Backend (.env)
+
+```env
+# Base de Datos
+DATABASE_URL=postgresql://postgres:tu_password@localhost:5432/hospital_talagante
+
+# Seguridad
+SECRET_KEY=tu_clave_secreta_muy_larga_y_segura_aqui
+ADMIN_SECRET_KEY=clave_para_registrar_admins
+
+# Configuración Adicional (opcional)
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+TIMEZONE=America/Santiago
+```
+
+**Generar claves seguras**:
+```python
+import secrets
+print(secrets.token_urlsafe(64))
+```
+
+### Configuración Frontend
+
+El frontend se autoconfigura para:
+- **Desarrollo**: `http://localhost:8000` (backend local)
+- **Producción**: Detecta IP de red automáticamente
+
+Para forzar una IP específica, editar `frontend/src/api/axios.ts`:
+```typescript
+const baseURL = 'http://192.168.1.100:8000';
+```
+
+---
+
+## 🎯 Uso
+
+### Iniciar el Sistema
+
+#### Opción 1: Inicio Automático
+```bash
+# Windows:
+INICIAR_TODO.bat
+
+# Linux/Mac:
+./iniciar_todo.sh
+```
+
+#### Opción 2: Inicio Manual
+
+**Terminal 1 - Backend**:
+```bash
+cd backend
+venv\Scripts\activate  # Windows
+source venv/bin/activate  # Linux/Mac
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+**Terminal 2 - Frontend**:
+```bash
+cd frontend
+npm run dev
+```
+
+### Acceder al Sistema
+
+- **Frontend**: http://localhost:5173
+- **Backend API**: http://localhost:8000
+- **Documentación API**: http://localhost:8000/docs
+
+### Primer Acceso
+
+1. Ir a http://localhost:5173/registrar-admin
+2. Ingresar:
+   - RUT, nombre, email, celular
+   - Contraseña (mínimo 8 caracteres)
+   - Clave secreta (del .env: `ADMIN_SECRET_KEY`)
+3. Hacer login con las credenciales creadas
+
+---
+
+## 📁 Estructura del Proyecto
+
+```
+Proyecto/
+├── 📂 backend/                    # API FastAPI
+│   ├── 📂 middleware/             # Autenticación JWT
+│   ├── 📂 models/                 # Modelos SQLAlchemy
+│   │   ├── usuario.py
+│   │   ├── paciente.py
+│   │   ├── examen_base.py
+│   │   ├── examen_tac.py
+│   │   ├── examen_rx.py
+│   │   ├── examen_eco.py
+│   │   └── catalogos.py
+│   ├── 📂 routers/                # Endpoints REST
+│   │   ├── auth.py               # Login/registro
+│   │   ├── catalogos.py          # Catálogos
+│   │   ├── examenes.py           # CRUD exámenes
+│   │   ├── graficos.py           # Estadísticas
+│   │   ├── pacientes.py          # Gestión pacientes
+│   │   ├── reportes.py           # Excel export/import
+│   │   └── usuarios.py           # Gestión usuarios
+│   ├── 📂 schemas/                # Validación Pydantic
+│   │   ├── catalogos.py
+│   │   ├── examen.py
+│   │   └── usuario.py
+│   ├── 📂 utils/                  # Utilidades
+│   │   ├── helpers.py            # RUT chileno, etc
+│   │   ├── security.py           # JWT, bcrypt
+│   │   ├── timezone.py           # Zona horaria Chile
+│   │   └── validators.py         # Validadores custom
+│   ├── database.py               # Conexión BD
+│   ├── main.py                   # App principal
+│   ├── requirements.txt          # Dependencias Python
+│   ├── .env.example              # Ejemplo configuración
+│   └── start_server.bat          # Script inicio Windows
+│
+├── 📂 frontend/                   # App React
+│   ├── 📂 public/                # Archivos estáticos
+│   ├── 📂 src/
+│   │   ├── 📂 api/               # Cliente HTTP
+│   │   │   └── axios.ts
+│   │   ├── 📂 components/        # Componentes reutilizables
+│   │   │   ├── Combobox.tsx
+│   │   │   ├── PersonalCombobox.tsx
+│   │   │   ├── FiltrosAvanzados.tsx
+│   │   │   ├── FormularioTAC.tsx
+│   │   │   ├── FormularioRX.tsx
+│   │   │   ├── FormularioECO.tsx
+│   │   │   ├── GraficoVisual.tsx
+│   │   │   ├── Layout.tsx
+│   │   │   └── ErrorBoundary.tsx
+│   │   ├── 📂 context/           # Estado global
+│   │   │   └── AuthContext.tsx
+│   │   ├── 📂 hooks/             # Hooks personalizados
+│   │   │   └── useLastExamData.ts
+│   │   ├── 📂 pages/             # Páginas/Rutas
+│   │   │   ├── Login.tsx
+│   │   │   ├── RegistrarAdmin.tsx
+│   │   │   ├── Dashboard.tsx
+│   │   │   ├── CrearExamen.tsx
+│   │   │   ├── EditarExamen.tsx
+│   │   │   ├── ListaExamenes.tsx
+│   │   │   ├── Graficos.tsx
+│   │   │   ├── Codigos.tsx
+│   │   │   ├── Administracion.tsx
+│   │   │   └── Perfil.tsx
+│   │   ├── 📂 types/             # Tipos TypeScript
+│   │   │   ├── index.ts
+│   │   │   └── filtros.ts
+│   │   ├── 📂 utils/             # Utilidades
+│   │   │   └── formatters.ts
+│   │   ├── App.tsx               # App principal
+│   │   ├── main.tsx              # Punto entrada
+│   │   └── index.css             # Estilos Tailwind
+│   ├── package.json              # Dependencias Node
+│   ├── vite.config.ts            # Configuración Vite
+│   ├── tailwind.config.js        # Configuración Tailwind
+│   ├── tsconfig.json             # Configuración TypeScript
+│   └── start_frontend.bat        # Script inicio Windows
+│
+├── 📂 database/                   # Base de datos
+│   ├── schema.sql                # Esquema completo
+│   ├── 📂 seeds/                 # Datos iniciales
+│   │   ├── codigos_tac.sql
+│   │   ├── codigos_rx.sql
+│   │   └── codigos_eco.sql
+│   ├── reset_database.sql        # Resetear BD
+│   └── limpiar_tablas.sql        # Limpiar datos
+│
+├── 📂 scripts/                    # Scripts utilidad
+│   ├── OBTENER_IP.bat            # Obtener IP red (Windows)
+│   ├── obtener_ip.sh             # Obtener IP red (Linux)
+│   ├── CONFIGURAR_FIREWALL.bat   # Abrir puertos (Windows)
+│   └── hospital-talagante.service # Servicio systemd (Linux)
+│
+├── .gitignore                    # Archivos ignorados Git
+├── INICIAR_TODO.bat              # Inicio completo (Windows)
+├── iniciar_todo.sh               # Inicio completo (Linux/Mac)
+└── README.md                     # Este archivo
+```
+
+---
+
+## 🔧 Scripts Útiles
+
+### Windows
+
+| Script | Descripción |
+|--------|-------------|
+| `INICIAR_TODO.bat` | Inicia backend + frontend automáticamente |
+| `backend/start_server.bat` | Solo backend |
+| `frontend/start_frontend.bat` | Solo frontend |
+| `OBTENER_IP.bat` | Muestra IP de red para acceso remoto |
+| `CONFIGURAR_FIREWALL.bat` | Abre puertos 8000 y 5173 en firewall |
+
+### Linux/Mac
+
+| Script | Descripción |
+|--------|-------------|
+| `iniciar_todo.sh` | Inicia backend + frontend automáticamente |
+| `scripts/obtener_ip.sh` | Muestra IP de red para acceso remoto |
+| `scripts/hospital-talagante.service` | Servicio systemd (arranque automático) |
+
+### Base de Datos
+
+```bash
+# Resetear BD completa (elimina y recrea)
+psql -U postgres -d hospital_talagante -f database/reset_database.sql
+
+# Solo limpiar datos (mantiene estructura)
+$env:PGCLIENTENCODING="UTF8"  # Windows
+psql -U postgres -d hospital_talagante -f database/limpiar_tablas.sql
+
+# Recargar schema
+$env:PGCLIENTENCODING="UTF8"  # Windows
+psql -U postgres -d hospital_talagante -f database/schema.sql
+```
+
+---
+
+## 🔄 Mantenimiento
+
+### Backup de Base de Datos
+```bash
+# Crear backup
+pg_dump -U postgres hospital_talagante > backup_$(date +%Y%m%d).sql
+
+# Restaurar backup
+psql -U postgres -d hospital_talagante < backup_20260209.sql
+```
+
+### Actualizar Dependencias
+
+**Backend**:
+```bash
+cd backend
+pip install --upgrade -r requirements.txt
+```
+
+**Frontend**:
+```bash
+cd frontend
+npm update
+```
+
+### Logs
+
+**Backend**: Los logs se muestran en la terminal donde se ejecuta uvicorn
+
+**Frontend**: Los logs se muestran en la consola del navegador (F12)
+
+---
+
+## 🐛 Solución de Problemas
+
+### Error: "Cannot connect to database"
+**Causa**: PostgreSQL no está corriendo o credenciales incorrectas
+**Solución**:
+```bash
+# Windows:
+net start postgresql-x64-14
+
+# Linux:
+sudo systemctl start postgresql
+
+# Verificar conexión:
+psql -U postgres -d hospital_talagante
+```
+
+### Error: "Port 8000 already in use"
+**Causa**: El puerto ya está ocupado
+**Solución**:
+```bash
+# Windows - Matar proceso en puerto 8000:
+netstat -ano | findstr :8000
+taskkill /PID <PID> /F
+
+# Linux:
+lsof -ti:8000 | xargs kill -9
+```
+
+### Error: "Module not found"
+**Causa**: Dependencias no instaladas
+**Solución**:
+```bash
+# Backend:
+cd backend
+pip install -r requirements.txt
+
+# Frontend:
+cd frontend
+npm install
+```
+
+### Error de Codificación en schema.sql
+**Solución**:
+```powershell
+# Windows PowerShell:
+$env:PGCLIENTENCODING="UTF8"
+psql -U postgres -d hospital_talagante -f database/schema.sql
+```
+
+### No puedo acceder desde otro dispositivo
+**Solución**:
+1. Obtener IP del servidor:
+   ```bash
+   # Windows:
+   ipconfig
+   # Linux:
+   ip addr
+   ```
+2. Configurar firewall (Windows):
+   ```bash
+   CONFIGURAR_FIREWALL.bat
+   ```
+3. Acceder desde otro dispositivo:
+   ```
+   http://IP_DEL_SERVIDOR:5173
+   ```
+
+---
+
+## 📚 Documentación Adicional
+
+### API REST
+- Documentación interactiva: http://localhost:8000/docs
+- Especificación OpenAPI: http://localhost:8000/openapi.json
+
+### Endpoints Principales
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| POST | `/auth/login` | Login de usuario |
+| POST | `/auth/register-admin` | Registrar administrador |
+| GET | `/examenes/tac/completo` | Listar exámenes TAC |
+| POST | `/examenes/tac` | Crear examen TAC |
+| PUT | `/examenes/tac/{id}` | Actualizar examen TAC |
+| DELETE | `/examenes/tac/{id}` | Eliminar examen TAC |
+| GET | `/reportes/exportar-excel` | Exportar a Excel |
+| GET | `/graficos/*` | Gráficos estadísticos |
+
+---
+
+## 👥 Roles y Permisos
+
+### Administrador
+- ✅ Crear, editar, eliminar exámenes
+- ✅ Gestionar usuarios
+- ✅ Ver gráficos y reportes
+- ✅ Exportar/importar Excel
+- ✅ Suspender/reactivar exámenes
+- ✅ Marcar exámenes en revisión
+
+### Ingresador
+- ✅ Crear exámenes
+- ✅ Ver lista de exámenes
+- ✅ Ver códigos MAI
+- ❌ No puede editar/eliminar
+- ❌ No puede ver gráficos
+- ❌ No puede gestionar usuarios
+
+---
+
+## 📄 Licencia
+
+Este proyecto es de uso interno del Hospital de Talagante.
+
+---
+
+## 🤝 Contribuir
+
+Para reportar bugs o sugerir mejoras:
+1. Crear un issue en el repositorio
+2. Describir el problema o mejora
+3. Incluir capturas de pantalla si aplica
+
+---
+
+## 📞 Soporte
+
+Para soporte técnico, contactar al equipo de TI del Hospital de Talagante, o al desarrollador de la API.
+
+---
+
+**Versión**: 1.5.0  
+**Última actualización**: Febrero 2026  
+**Desarrollado para**: Hospital de Talagante - Servicio de Imagenología

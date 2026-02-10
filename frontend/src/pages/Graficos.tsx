@@ -181,12 +181,12 @@ const GRAFICOS_OPCIONALES_DISPONIBLES: GraficoOpcionalPredefinido[] = [
     },
     {
         id: 'mes-atencion-personal-tm-tp-rx',
-        nombre: 'Mes x Atención por TM/TP (RX)',
-        descripcion: 'Análisis de atención por TM/TP específico en RX',
+        nombre: 'Mes x Atención por "Realizado por" (RX)',
+        descripcion: 'Análisis de atención por "Realizado por" específico en RX',
         parametros: [
             { nombre: 'anio', tipo: 'number', requerido: true, label: 'Año' },
             { nombre: 'contrato', tipo: 'select', opciones: ['Empresa Externa', 'Institucional'], requerido: true, label: 'Contrato' },
-            { nombre: 'personal_id', tipo: 'select-personal', requerido: true, label: 'TM/TP' }
+            { nombre: 'personal_id', tipo: 'select-personal', requerido: true, label: 'Realizado por' }
         ],
         endpoint: (params) => `/graficos/mes-atencion-personal?tipo_examen=RX&anio=${params.anio}&contrato=${params.contrato}&personal_id=${params.personal_id}&tipo_personal=GENERAL`
     },

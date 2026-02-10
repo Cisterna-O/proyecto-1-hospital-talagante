@@ -14,7 +14,7 @@ class ExamenTAC(Base):
     fecha_nacimiento = Column(Date, nullable=True)
     edad = Column(Integer, nullable=True)
     externo = Column(String(50), nullable=True)
-    protocolo_id = Column(Integer, ForeignKey("protocolos_tac.id"), nullable=True)
+    # protocolo_id = Column(Integer, ForeignKey("protocolos_tac.id"), nullable=True)
     cod_acv = Column(Boolean, nullable=False)
     ges = Column(Boolean, nullable=False)
     medio_contraste = Column(Boolean, nullable=False)
@@ -29,7 +29,7 @@ class ExamenTAC(Base):
     
     # Relaciones
     examen_base = relationship("ExamenBase", back_populates="examen_tac")
-    protocolo = relationship("ProtocoloTAC", foreign_keys=[protocolo_id])
+    # protocolo = relationship("ProtocoloTAC", foreign_keys=[protocolo_id])
     diagnostico_clinico = relationship("Diagnostico", foreign_keys=[diagnostico_clinico_id])
     medico_solicitante = relationship("PersonalMedico", foreign_keys=[medico_solicitante_id])
     tm = relationship("PersonalMedico", foreign_keys=[tm_id])
