@@ -14,6 +14,12 @@ interface Usuario {
     created_at: string;
 }
 
+interface ResultadosImportacion {
+    TAC: { procesados: number; importados: number; duplicados: number; errores: number };
+    RX: { procesados: number; importados: number; duplicados: number; errores: number };
+    ECO: { procesados: number; importados: number; duplicados: number; errores: number };
+}
+
 export default function Administracion() {
     const { isAdmin } = useAuth();
     const navigate = useNavigate();
@@ -23,6 +29,10 @@ export default function Administracion() {
     const [importando, setImportando] = useState(false);
     const [showForm, setShowForm] = useState(false);
     const [showExamenes, setShowExamenes] = useState<any>(null);
+    const [showResultados, setShowResultados] = useState<{
+        resultados: ResultadosImportacion;
+        tieneErrores: boolean;
+    } | null>(null);
     
     const [formData, setFormData] = useState({
         rut: '',
@@ -117,7 +127,6 @@ export default function Administracion() {
         }
     };
 
-    /* FUNCIÓN DE IMPORTAR - COMENTADA TEMPORALMENTE
     const importarExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -127,7 +136,22 @@ export default function Administracion() {
             return;
         }
 
-        if (!confirm('¿Importar exámenes desde este archivo? Los duplicados serán ignorados.')) {
+        const mensaje = `📥 IMPORTACIÓN DE EXÁMENES
+
+Se procesarán las 3 hojas del Excel (TAC, RX, ECO).
+
+📋 Reglas de importación:
+✅ Duplicados: Se omiten automáticamente
+✅ Nuevos datos: Se crean (Previsión, Procedencia, Personal, etc.)
+❌ Códigos MAI faltantes: Se reportan como error
+❌ Datos inválidos: Se reportan como error
+
+${file.name}
+Tamaño: ${(file.size / 1024).toFixed(2)} KB
+
+¿Continuar con la importación?`;
+
+        if (!confirm(mensaje)) {
             e.target.value = '';
             return;
         }
@@ -141,42 +165,28 @@ export default function Administracion() {
             const response = await api.post('/reportes/importar-excel', formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data'
-                }
+                },
+                timeout: 300000 // 5 minutos de timeout
             });
 
-            const resultados = response.data.resultados;
+            const { resultados, tiene_errores, excel_errores_base64 } = response.data;
             
-            let mensaje = '✅ IMPORTACIÓN COMPLETADA\n\n';
-            mensaje += `📊 TAC:\n`;
-            mensaje += `  • Procesados: ${resultados.TAC.procesados}\n`;
-            mensaje += `  • Importados: ${resultados.TAC.importados}\n`;
-            mensaje += `  • Duplicados: ${resultados.TAC.duplicados}\n`;
-            mensaje += `  • Errores: ${resultados.TAC.errores}\n\n`;
-            
-            mensaje += `📊 RX:\n`;
-            mensaje += `  • Procesados: ${resultados.RX.procesados}\n`;
-            mensaje += `  • Importados: ${resultados.RX.importados}\n`;
-            mensaje += `  • Duplicados: ${resultados.RX.duplicados}\n`;
-            mensaje += `  • Errores: ${resultados.RX.errores}\n\n`;
-            
-            mensaje += `📊 ECO:\n`;
-            mensaje += `  • Procesados: ${resultados.ECO.procesados}\n`;
-            mensaje += `  • Importados: ${resultados.ECO.importados}\n`;
-            mensaje += `  • Duplicados: ${resultados.ECO.duplicados}\n`;
-            mensaje += `  • Errores: ${resultados.ECO.errores}`;
+            // Mostrar modal con resultados
+            setShowResultados({
+                resultados,
+                tieneErrores: tiene_errores
+            });
 
-            if (resultados.TAC.errores > 0 || resultados.RX.errores > 0 || resultados.ECO.errores > 0) {
-                mensaje += '\n\n⚠️ Revisa la consola para ver detalles de errores';
-                console.log('Errores TAC:', resultados.TAC.errores_detalle);
-                console.log('Errores RX:', resultados.RX.errores_detalle);
-                console.log('Errores ECO:', resultados.ECO.errores_detalle);
+            // Si hay errores, descargar Excel con errores
+            if (tiene_errores && excel_errores_base64) {
+                descargarExcelErrores(excel_errores_base64);
             }
-
-            alert(mensaje);
 
         } catch (err: any) {
             if (err.response?.status === 400) {
                 alert(`❌ Error: ${err.response.data.detail}`);
+            } else if (err.code === 'ECONNABORTED') {
+                alert('❌ La importación tomó demasiado tiempo. Verifica tu conexión.');
             } else {
                 alert('❌ Error al importar el archivo. Verifica que el formato sea correcto.');
             }
@@ -186,7 +196,31 @@ export default function Administracion() {
             e.target.value = '';
         }
     };
-    */
+
+    const descargarExcelErrores = (hexData: string) => {
+        try {
+            // Convertir hex a bytes
+            const bytes = new Uint8Array(hexData.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
+            
+            // Crear blob
+            const blob = new Blob([bytes], {
+                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            });
+            
+            // Descargar
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `errores_importacion_${new Date().toISOString().slice(0,10)}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (err) {
+            console.error('Error al descargar Excel de errores:', err);
+            alert('No se pudo descargar el archivo de errores');
+        }
+    };
         
     return (
         <div>
@@ -194,12 +228,15 @@ export default function Administracion() {
                 <h1 className="text-2xl font-bold">Administración de Usuarios</h1>
                 
                 <div className="flex gap-4">
-                    {/* BOTÓN DE IMPORTAR - COMENTADO TEMPORALMENTE
-                    <label className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 cursor-pointer transition-colors">
+                    <label className={`px-4 py-2 rounded transition-colors cursor-pointer ${
+                        importando 
+                            ? 'bg-gray-400 cursor-not-allowed' 
+                            : 'bg-purple-600 hover:bg-purple-700 text-white'
+                    }`}>
                         {importando ? (
                             <>⏳ Importando...</>
                         ) : (
-                            <>📥 Importar Respaldo</>
+                            <>📥 Importar Excel</>
                         )}
                         <input
                             type="file"
@@ -209,7 +246,6 @@ export default function Administracion() {
                             className="hidden"
                         />
                     </label>
-                    */}
                     
                     <button
                         onClick={() => setShowForm(!showForm)}
@@ -220,13 +256,14 @@ export default function Administracion() {
                 </div>
             </div>
 
-            {/* MENSAJE DE IMPORTACIÓN - COMENTADO TEMPORALMENTE
             {importando && (
                 <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
-                    ⏳ Importando exámenes desde Excel... Esto puede tomar unos minutos.
+                    <div className="flex items-center gap-2">
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-700"></div>
+                        <span>⏳ Importando exámenes desde Excel... Esto puede tomar varios minutos dependiendo del tamaño del archivo.</span>
+                    </div>
                 </div>
             )}
-            */}
             
             {showForm && (
                 <form onSubmit={crearUsuario} className="bg-white p-6 rounded-lg shadow mb-6">
@@ -380,6 +417,136 @@ export default function Administracion() {
                 </div>
             )}
             
+            {/* MODAL DE RESULTADOS DE IMPORTACIÓN */}
+            {showResultados && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-xl font-bold">
+                                ✅ Importación Completada
+                            </h2>
+                            <button
+                                onClick={() => setShowResultados(null)}
+                                className="text-gray-500 hover:text-gray-700 text-2xl"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        
+                        <div className="space-y-4">
+                            {/* TAC */}
+                            <div className="border rounded-lg p-4">
+                                <h3 className="font-bold text-lg mb-2">📊 TAC</h3>
+                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                    <div>Procesados:</div>
+                                    <div className="font-semibold">{showResultados.resultados.TAC.procesados}</div>
+                                    
+                                    <div>✅ Importados:</div>
+                                    <div className="font-semibold text-green-600">{showResultados.resultados.TAC.importados}</div>
+                                    
+                                    <div>⏭️ Duplicados:</div>
+                                    <div className="font-semibold text-yellow-600">{showResultados.resultados.TAC.duplicados}</div>
+                                    
+                                    <div>❌ Errores:</div>
+                                    <div className="font-semibold text-red-600">{showResultados.resultados.TAC.errores}</div>
+                                </div>
+                            </div>
+
+                            {/* RX */}
+                            <div className="border rounded-lg p-4">
+                                <h3 className="font-bold text-lg mb-2">📊 RX</h3>
+                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                    <div>Procesados:</div>
+                                    <div className="font-semibold">{showResultados.resultados.RX.procesados}</div>
+                                    
+                                    <div>✅ Importados:</div>
+                                    <div className="font-semibold text-green-600">{showResultados.resultados.RX.importados}</div>
+                                    
+                                    <div>⏭️ Duplicados:</div>
+                                    <div className="font-semibold text-yellow-600">{showResultados.resultados.RX.duplicados}</div>
+                                    
+                                    <div>❌ Errores:</div>
+                                    <div className="font-semibold text-red-600">{showResultados.resultados.RX.errores}</div>
+                                </div>
+                            </div>
+
+                            {/* ECO */}
+                            <div className="border rounded-lg p-4">
+                                <h3 className="font-bold text-lg mb-2">📊 ECO</h3>
+                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                    <div>Procesados:</div>
+                                    <div className="font-semibold">{showResultados.resultados.ECO.procesados}</div>
+                                    
+                                    <div>✅ Importados:</div>
+                                    <div className="font-semibold text-green-600">{showResultados.resultados.ECO.importados}</div>
+                                    
+                                    <div>⏭️ Duplicados:</div>
+                                    <div className="font-semibold text-yellow-600">{showResultados.resultados.ECO.duplicados}</div>
+                                    
+                                    <div>❌ Errores:</div>
+                                    <div className="font-semibold text-red-600">{showResultados.resultados.ECO.errores}</div>
+                                </div>
+                            </div>
+
+                            {/* Mensaje de errores */}
+                            {showResultados.tieneErrores && (
+                                <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-4">
+                                    <p className="text-yellow-800 font-semibold mb-2">
+                                        ⚠️ Se encontraron errores en algunas filas
+                                    </p>
+                                    <p className="text-sm text-yellow-700">
+                                        Se ha descargado automáticamente un archivo Excel con las filas que presentaron errores. 
+                                        Revisa la columna "ERROR" para ver el detalle de cada problema.
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Totales */}
+                            <div className="bg-blue-50 border border-blue-300 rounded-lg p-4">
+                                <h3 className="font-bold mb-2">📈 Totales Generales</h3>
+                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                    <div>Total Procesados:</div>
+                                    <div className="font-semibold">
+                                        {showResultados.resultados.TAC.procesados + 
+                                         showResultados.resultados.RX.procesados + 
+                                         showResultados.resultados.ECO.procesados}
+                                    </div>
+                                    
+                                    <div>Total Importados:</div>
+                                    <div className="font-semibold text-green-600">
+                                        {showResultados.resultados.TAC.importados + 
+                                         showResultados.resultados.RX.importados + 
+                                         showResultados.resultados.ECO.importados}
+                                    </div>
+                                    
+                                    <div>Total Duplicados:</div>
+                                    <div className="font-semibold text-yellow-600">
+                                        {showResultados.resultados.TAC.duplicados + 
+                                         showResultados.resultados.RX.duplicados + 
+                                         showResultados.resultados.ECO.duplicados}
+                                    </div>
+                                    
+                                    <div>Total Errores:</div>
+                                    <div className="font-semibold text-red-600">
+                                        {showResultados.resultados.TAC.errores + 
+                                         showResultados.resultados.RX.errores + 
+                                         showResultados.resultados.ECO.errores}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button
+                            onClick={() => setShowResultados(null)}
+                            className="mt-6 w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+                        >
+                            Cerrar
+                        </button>
+                    </div>
+                </div>
+            )}
+            
+            {/* MODAL DE EXÁMENES DE USUARIO */}
             {showExamenes && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
                     <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">

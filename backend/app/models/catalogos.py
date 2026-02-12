@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, Boolean, Text
 from sqlalchemy.orm import relationship
 from ..database import Base
+from ..models.examen_especifico import ExamenEspecifico
 
 class Prevision(Base):
     __tablename__ = "previsiones"

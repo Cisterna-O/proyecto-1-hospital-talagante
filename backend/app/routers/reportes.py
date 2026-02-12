@@ -21,6 +21,8 @@ from ..models.examen_eco import ExamenECO
 from ..models.catalogos import PersonalMedico
 from ..middleware.auth_middleware import get_current_user, require_admin, require_ingresador_o_admin
 from ..utils.helpers import limpiar_rut
+from ..models.catalogos import Prevision, Procedencia, CodigoMAI, Diagnostico, PersonalMedico
+from ..models.examen_especifico import ExamenEspecifico
 
 router = APIRouter()
 
@@ -627,30 +629,65 @@ def exportar_excel(
         }
     )
 
+
+
+
+from datetime import time  # Agregar a la línea de datetime
+from ..utils.helpers import limpiar_rut  # Ya debería existir
+
+# ============================================
+# IMPORTAR EXCEL CON LÓGICA COMPLETA
+# ============================================
+
 @router.post("/importar-excel")
-async def importar_excel_respaldo(
+async def importar_excel(
     file: UploadFile = File(...),
     current_user: Usuario = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
     """
-    Importa exámenes desde Excel de respaldo.
-    Solo importa registros que NO existan (evita duplicados por contenido).
+    Importa exámenes desde Excel con las siguientes características:
+    
+    1. Detección de Duplicados:
+       - Mismo tipo, fecha, RUT, código y examen específico = duplicado
+    
+    2. Autocompletado:
+       - ID: Siempre nuevo
+       - Creado el: Fecha/hora de importación
+       - Campos opcionales vacíos: NULL
+       - Campos obligatorios vacíos: ERROR
+    
+    3. Creación de Catálogos:
+       - Auto-crear: Previsión, Procedencia, Diagnóstico, Personal Médico, Examen Específico
+       - NO auto-crear: Atención (predefinido), Contrato (predefinido), Códigos MAI
+    
+    4. Reporte de Errores:
+       - Descarga Excel con filas rechazadas + columna ERROR
     """
     import pandas as pd
     from io import BytesIO
     from datetime import datetime as dt
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill
+    
+    from ..models.catalogos import Prevision, Procedencia, CodigoMAI, ExamenEspecifico, Diagnostico, PersonalMedico
+    from ..models.paciente import Paciente
+    from ..utils.helpers import limpiar_rut
     
     try:
-        # Verificar que es un archivo Excel
+        # ============================================
+        # 1. VALIDAR ARCHIVO
+        # ============================================
         if not file.filename.endswith(('.xlsx', '.xls')):
-            raise HTTPException(status_code=400, detail="El archivo debe ser formato Excel (.xlsx o .xls)")
+            raise HTTPException(
+                status_code=400, 
+                detail="El archivo debe ser formato Excel (.xlsx o .xls)"
+            )
         
         # Leer archivo Excel
         contents = await file.read()
         excel_data = BytesIO(contents)
         
-        # Verificar que tiene las 3 hojas requeridas
         try:
             xls = pd.ExcelFile(excel_data)
             hojas_requeridas = {'TAC', 'RX', 'ECO'}
@@ -660,208 +697,361 @@ async def importar_excel_respaldo(
                 faltantes = hojas_requeridas - hojas_disponibles
                 raise HTTPException(
                     status_code=400, 
-                    detail=f"Formato incorrecto. Faltan hojas: {', '.join(faltantes)}"
+                    detail=f"Faltan hojas requeridas: {', '.join(faltantes)}"
                 )
         except Exception as e:
-            raise HTTPException(status_code=400, detail=f"Error al leer Excel: {str(e)}")
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Error al leer Excel: {str(e)}"
+            )
         
         # Leer las 3 hojas
         df_tac = pd.read_excel(excel_data, sheet_name='TAC')
         df_rx = pd.read_excel(excel_data, sheet_name='RX')
         df_eco = pd.read_excel(excel_data, sheet_name='ECO')
         
+        # ============================================
+        # 2. INICIALIZAR CONTADORES Y ERRORES
+        # ============================================
         resultados = {
-            "TAC": {"procesados": 0, "importados": 0, "duplicados": 0, "errores": 0, "errores_detalle": []},
-            "RX": {"procesados": 0, "importados": 0, "duplicados": 0, "errores": 0, "errores_detalle": []},
-            "ECO": {"procesados": 0, "importados": 0, "duplicados": 0, "errores": 0, "errores_detalle": []}
+            "TAC": {
+                "procesados": 0, 
+                "importados": 0, 
+                "duplicados": 0, 
+                "errores": 0,
+                "filas_error": []  # Lista de filas con error para Excel
+            },
+            "RX": {
+                "procesados": 0, 
+                "importados": 0, 
+                "duplicados": 0, 
+                "errores": 0,
+                "filas_error": []
+            },
+            "ECO": {
+                "procesados": 0, 
+                "importados": 0, 
+                "duplicados": 0, 
+                "errores": 0,
+                "filas_error": []
+            }
         }
         
-        # Función auxiliar para verificar duplicados
-        def es_duplicado(tipo, fecha_real, paciente_rut, examen_nombre):
-            return db.query(ExamenBase).join(Paciente).filter(
-                ExamenBase.tipo_examen == tipo,
-                ExamenBase.fecha_realizacion == fecha_real,
-                Paciente.rut == paciente_rut,
-                ExamenBase.deleted_at.is_(None)
-            ).first() is not None
+        # ============================================
+        # 3. FUNCIONES AUXILIARES
+        # ============================================
         
-        # Importar TAC
+        def verificar_duplicado(tipo: str, fecha: date, rut: str, codigo: str, examen: str) -> bool:
+            """Verifica si existe un examen duplicado"""
+            try:
+                rut_limpio = limpiar_rut(rut)
+                
+                existe = db.query(ExamenBase).join(Paciente).join(CodigoMAI).join(ExamenEspecifico).filter(
+                    ExamenBase.tipo_examen == tipo,
+                    ExamenBase.fecha_realizacion == fecha,
+                    Paciente.rut == rut_limpio,
+                    CodigoMAI.codigo == codigo,
+                    ExamenEspecifico.nombre == examen,
+                    ExamenBase.deleted_at.is_(None)
+                ).first()
+                
+                return existe is not None
+            except:
+                return False
+        
+        def obtener_o_crear_prevision(nombre: str):
+            """Busca o crea previsión"""
+            if not nombre or pd.isna(nombre):
+                return None
+            
+            nombre = str(nombre).strip()
+            prevision = db.query(Prevision).filter(Prevision.nombre == nombre).first()
+            
+            if not prevision:
+                prevision = Prevision(nombre=nombre, activo=True)
+                db.add(prevision)
+                db.flush()
+            
+            return prevision
+        
+        def obtener_o_crear_procedencia(nombre: str):
+            """Busca o crea procedencia"""
+            if not nombre or pd.isna(nombre):
+                return None
+            
+            nombre = str(nombre).strip()
+            procedencia = db.query(Procedencia).filter(Procedencia.nombre == nombre).first()
+            
+            if not procedencia:
+                procedencia = Procedencia(nombre=nombre, activo=True)
+                db.add(procedencia)
+                db.flush()
+            
+            return procedencia
+        
+        def obtener_codigo_mai(codigo: str, tipo: str):
+            """Busca código MAI (NO crea si no existe)"""
+            if not codigo or pd.isna(codigo):
+                return None
+            
+            codigo = str(codigo).strip()
+            return db.query(CodigoMAI).filter(
+                CodigoMAI.codigo == codigo,
+                CodigoMAI.tipo_examen == tipo
+            ).first()
+        
+        def obtener_o_crear_examen_especifico(nombre: str, tipo: str):
+            """Busca o crea examen específico"""
+            if not nombre or pd.isna(nombre):
+                return None
+            
+            nombre = str(nombre).strip()
+            examen = db.query(ExamenEspecifico).filter(
+                ExamenEspecifico.nombre == nombre,
+                ExamenEspecifico.tipo_examen == tipo
+            ).first()
+            
+            if not examen:
+                examen = ExamenEspecifico(nombre=nombre, tipo_examen=tipo, activo=True)
+                db.add(examen)
+                db.flush()
+            
+            return examen
+        
+        def obtener_o_crear_diagnostico(nombre: str):
+            """Busca o crea diagnóstico"""
+            if not nombre or pd.isna(nombre):
+                return None
+            
+            nombre = str(nombre).strip()
+            diagnostico = db.query(Diagnostico).filter(Diagnostico.nombre == nombre).first()
+            
+            if not diagnostico:
+                diagnostico = Diagnostico(nombre=nombre, activo=True)
+                db.add(diagnostico)
+                db.flush()
+            
+            return diagnostico
+        
+        def obtener_o_crear_personal(nombre: str, tipo: str = 'GENERAL'):
+            """Busca o crea personal médico"""
+            if not nombre or pd.isna(nombre):
+                return None
+            
+            nombre = str(nombre).strip()
+            personal = db.query(PersonalMedico).filter(PersonalMedico.nombre == nombre).first()
+            
+            if not personal:
+                personal = PersonalMedico(nombre=nombre, tipo=tipo, activo=True)
+                db.add(personal)
+                db.flush()
+            
+            return personal
+        
+        def validar_atencion(valor: str) -> tuple[bool, str]:
+            """Valida que atención sea uno de los valores predefinidos"""
+            if not valor or pd.isna(valor):
+                return False, "Atención es obligatoria"
+            
+            valor = str(valor).strip()
+            valores_validos = ['Abierta', 'Cerrada', 'Urgencia']
+            
+            if valor not in valores_validos:
+                return False, f"Atención inválida. Debe ser: {', '.join(valores_validos)}"
+            
+            return True, valor
+        
+        def validar_contrato(valor: str) -> tuple[bool, str]:
+            """Valida que contrato sea uno de los valores predefinidos o vacío"""
+            if not valor or pd.isna(valor):
+                return True, None  # Contrato es opcional
+            
+            valor = str(valor).strip()
+            valores_validos = ['Empresa Externa', 'Institucional']
+            
+            if valor not in valores_validos:
+                return False, f"Contrato inválido. Debe ser: {', '.join(valores_validos)} o vacío"
+            
+            return True, valor
+        
+        def parsear_fecha(valor) -> tuple[bool, date, str]:
+            """Parsea fecha con manejo de errores"""
+            if pd.isna(valor):
+                return False, None, "Fecha vacía"
+            
+            try:
+                fecha = pd.to_datetime(valor).date()
+                return True, fecha, ""
+            except:
+                return False, None, f"Fecha inválida: {valor}"
+        
+        def parsear_hora(valor) -> tuple[bool, time, str]:
+            """Parsea hora con manejo de errores"""
+            if pd.isna(valor):
+                return False, None, "Hora vacía"
+            
+            try:
+                if isinstance(valor, time):
+                    return True, valor, ""
+                
+                hora = pd.to_datetime(str(valor), format='%H:%M:%S').time()
+                return True, hora, ""
+            except:
+                try:
+                    hora = pd.to_datetime(str(valor)).time()
+                    return True, hora, ""
+                except:
+                    return False, None, f"Hora inválida: {valor}"
+        
+        def parsear_boolean(valor, nombre_campo: str) -> tuple[bool, bool, str]:
+            """Parsea valores booleanos (Sí/No)"""
+            if pd.isna(valor):
+                return False, None, f"{nombre_campo} es obligatorio"
+            
+            valor_str = str(valor).strip().lower()
+            
+            if valor_str in ['sí', 'si', 'yes', 'true', '1', 's']:
+                return True, True, ""
+            elif valor_str in ['no', 'false', '0', 'n']:
+                return True, False, ""
+            else:
+                return False, None, f"{nombre_campo} inválido: debe ser Sí o No"
+        
+        # ============================================
+        # 4. PROCESAR TAC
+        # ============================================
         for idx, row in df_tac.iterrows():
             resultados["TAC"]["procesados"] += 1
+            fila_num = idx + 2  # +2 porque Excel empieza en 1 y tiene header
+            error_msg = ""
+            
             try:
-                # Verificar campos obligatorios
-                if pd.isna(row.get('Fecha Realización')) or pd.isna(row.get('Paciente RUT')):
-                    resultados["TAC"]["errores"] += 1
-                    resultados["TAC"]["errores_detalle"].append(f"Fila {idx+2}: Faltan datos obligatorios")
-                    continue
+                # --- Validar campos obligatorios ---
+                if pd.isna(row.get('Fecha Realización')):
+                    error_msg = "Fecha Realización es obligatoria"
+                    raise ValueError(error_msg)
                 
-                fecha_realizacion = pd.to_datetime(row['Fecha Realización']).date()
-                rut_paciente = str(row['Paciente RUT']).strip()
+                if pd.isna(row.get('RUT')):
+                    error_msg = "RUT es obligatorio"
+                    raise ValueError(error_msg)
                 
-                # Verificar duplicado por contenido
-                if es_duplicado("TAC", fecha_realizacion, rut_paciente, str(row.get('Examen Específico', ''))):
+                if pd.isna(row.get('Nombre')):
+                    error_msg = "Nombre es obligatorio"
+                    raise ValueError(error_msg)
+                
+                # --- Parsear fecha ---
+                ok, fecha_realizacion, err = parsear_fecha(row['Fecha Realización'])
+                if not ok:
+                    error_msg = err
+                    raise ValueError(error_msg)
+                
+                # --- Validar RUT ---
+                try:
+                    rut_paciente = limpiar_rut(str(row['RUT']))
+                except:
+                    error_msg = f"RUT inválido: {row['RUT']}"
+                    raise ValueError(error_msg)
+                
+                # --- Validar Código MAI ---
+                codigo_str = str(row.get('Código', '')).strip() if pd.notna(row.get('Código')) else ''
+                examen_str = str(row.get('Examen', '')).strip() if pd.notna(row.get('Examen')) else ''
+                
+                if not codigo_str:
+                    error_msg = "Código MAI es obligatorio"
+                    raise ValueError(error_msg)
+                
+                if not examen_str:
+                    error_msg = "Examen Específico es obligatorio"
+                    raise ValueError(error_msg)
+                
+                # --- Verificar duplicado ---
+                if verificar_duplicado("TAC", fecha_realizacion, rut_paciente, codigo_str, examen_str):
                     resultados["TAC"]["duplicados"] += 1
                     continue
                 
-                # Buscar o crear paciente
+                # --- Validar Atención ---
+                ok, atencion = validar_atencion(row.get('Atención'))
+                if not ok:
+                    error_msg = atencion  # El mensaje de error está en el segundo valor
+                    raise ValueError(error_msg)
+                
+                # --- Validar Contrato ---
+                ok, contrato = validar_contrato(row.get('Contrato'))
+                if not ok:
+                    error_msg = contrato
+                    raise ValueError(error_msg)
+                
+                # --- Parsear Fecha Solicitud ---
+                ok, fecha_solicitud, err = parsear_fecha(row.get('Fecha Solicitud'))
+                if not ok:
+                    error_msg = f"Fecha Solicitud {err}"
+                    raise ValueError(error_msg)
+                
+                # --- Parsear Hora ---
+                ok, hora, err = parsear_hora(row.get('Hora'))
+                if not ok:
+                    error_msg = f"Hora {err}"
+                    raise ValueError(error_msg)
+                
+                # --- Parsear Booleanos ---
+                ok, cod_acv, err = parsear_boolean(row.get('Cód.ACV'), 'Cód.ACV')
+                if not ok:
+                    error_msg = err
+                    raise ValueError(error_msg)
+                
+                ok, ges, err = parsear_boolean(row.get('GES'), 'GES')
+                if not ok:
+                    error_msg = err
+                    raise ValueError(error_msg)
+                
+                ok, medio_contraste, err = parsear_boolean(row.get('M.Contraste'), 'M.Contraste')
+                if not ok:
+                    error_msg = err
+                    raise ValueError(error_msg)
+                
+                # --- Buscar o crear Paciente ---
                 paciente = db.query(Paciente).filter(Paciente.rut == rut_paciente).first()
                 if not paciente:
+                    # Parsear fecha nacimiento si existe
+                    fecha_nac = None
+                    if pd.notna(row.get('F/Nac')):
+                        ok, fecha_nac, _ = parsear_fecha(row['F/Nac'])
+                    
                     paciente = Paciente(
                         rut=rut_paciente,
-                        nombre_completo=str(row.get('Paciente Nombre', 'Sin nombre')),
-                        fecha_nacimiento=pd.to_datetime(row['Fecha Nac.'], errors='ignore') if pd.notna(row.get('Fecha Nac.')) else None
+                        nombre_completo=str(row['Nombre']).strip(),
+                        fecha_nacimiento=fecha_nac
                     )
                     db.add(paciente)
                     db.flush()
                 
-                # Buscar catálogos (sin crear si no existen)
-                prevision = db.query(Prevision).filter(
-                    Prevision.nombre == str(row.get('Previsión', ''))
-                ).first() if pd.notna(row.get('Previsión')) else None
+                # --- Buscar/crear catálogos ---
+                prevision = obtener_o_crear_prevision(row.get('Previsión'))
+                procedencia = obtener_o_crear_procedencia(row.get('Procedencia'))
                 
-                procedencia = db.query(Procedencia).filter(
-                    Procedencia.nombre == str(row.get('Procedencia', ''))
-                ).first() if pd.notna(row.get('Procedencia')) else None
+                codigo_mai = obtener_codigo_mai(codigo_str, "TAC")
+                if not codigo_mai:
+                    error_msg = f"Código MAI '{codigo_str}' no existe en el sistema"
+                    raise ValueError(error_msg)
                 
-                codigo_mai = db.query(CodigoMAI).filter(
-                    CodigoMAI.codigo == str(row.get('Código', '')),
-                    CodigoMAI.tipo_examen == "TAC"
-                ).first() if pd.notna(row.get('Código')) else None
+                examen_especifico = obtener_o_crear_examen_especifico(examen_str, "TAC")
+                diagnostico = obtener_o_crear_diagnostico(row.get('Diagnóstico'))
+                medico = obtener_o_crear_personal(row.get('Médico Sol.'), 'MEDICO')
+                tm = obtener_o_crear_personal(row.get('TM'), 'TM')
+                tp = obtener_o_crear_personal(row.get('TP'), 'TP')
+                secretaria = obtener_o_crear_personal(row.get('Secretaria'), 'SECRETARIA')
                 
-                examen_especifico = db.query(ExamenEspecifico).filter(
-                    ExamenEspecifico.nombre == str(row.get('Examen Específico', '')),
-                    ExamenEspecifico.tipo_examen == "TAC"
-                ).first() if pd.notna(row.get('Examen Específico')) else None
-                
-                # Crear ExamenBase
-                mes_realizacion = fecha_realizacion.month
-                anio_realizacion = fecha_realizacion.year
-                
+                # --- Crear ExamenBase ---
                 examen_base = ExamenBase(
                     tipo_examen="TAC",
                     fecha_realizacion=fecha_realizacion,
-                    atencion=str(row.get('Atención', 'Abierta')),
+                    atencion=atencion,
                     prevision_id=prevision.id if prevision else None,
                     procedencia_id=procedencia.id if procedencia else None,
                     paciente_id=paciente.id,
-                    codigo_mai_id=codigo_mai.id if codigo_mai else None,
-                    examen_especifico_id=examen_especifico.id if examen_especifico else None,
-                    contrato=str(row.get('Contrato', '')) if pd.notna(row.get('Contrato')) else None,
-                    mes_realizacion=mes_realizacion,
-                    anio_realizacion=anio_realizacion,
-                    created_by=current_user.id,
-                    created_at=dt.utcnow()
-                )
-                db.add(examen_base)
-                db.flush()
-                
-                # Buscar personal médico
-#                protocolo = db.query(ProtocoloTAC).filter(
-#                    ProtocoloTAC.nombre == str(row.get('Protocolo', ''))
-#                ).first() if pd.notna(row.get('Protocolo')) else None
-                
-                diagnostico = db.query(Diagnostico).filter(
-                    Diagnostico.nombre == str(row.get('Diag. Clínico', ''))
-                ).first() if pd.notna(row.get('Diag. Clínico')) else None
-                
-                medico = db.query(PersonalMedico).filter(
-                    PersonalMedico.nombre == str(row.get('Médico Sol.', ''))
-                ).first() if pd.notna(row.get('Médico Sol.')) else None
-                
-                tm = db.query(PersonalMedico).filter(
-                    PersonalMedico.nombre == str(row.get('TM', ''))
-                ).first() if pd.notna(row.get('TM')) else None
-                
-                tp = db.query(PersonalMedico).filter(
-                    PersonalMedico.nombre == str(row.get('TP', ''))
-                ).first() if pd.notna(row.get('TP')) else None
-                
-                secretaria = db.query(PersonalMedico).filter(
-                    PersonalMedico.nombre == str(row.get('Secretaria', ''))
-                ).first() if pd.notna(row.get('Secretaria')) else None
-                
-                # Crear ExamenTAC
-                examen_tac = ExamenTAC(
-                    examen_base_id=examen_base.id,
-                    fecha_solicitud=pd.to_datetime(row['Fecha Solicitud']).date() if pd.notna(row.get('Fecha Solicitud')) else fecha_realizacion,
-                    hora_realizacion=pd.to_datetime(str(row['Hora']), format='%H:%M:%S', errors='ignore').time() if pd.notna(row.get('Hora')) else None,
-                    edad=int(row['Edad']) if pd.notna(row.get('Edad')) else None,
-                    externo=str(row.get('Externo', '')) if pd.notna(row.get('Externo')) else None,
-#                    protocolo_id=protocolo.id if protocolo else None,
-                    cod_acv=str(row.get('Cód. ACV', 'No')).lower() == 'sí',
-                    ges=str(row.get('GES', 'No')).lower() == 'sí',
-                    medio_contraste=str(row.get('MC', 'No')).lower() == 'sí',
-                    vfge=str(row.get('VFGE', '')) if pd.notna(row.get('VFGE')) else None,
-                    premedicado=str(row.get('Premedicado', '')).lower() == 'sí' if pd.notna(row.get('Premedicado')) else None,
-                    diagnostico_clinico_id=diagnostico.id if diagnostico else None,
-                    medico_solicitante_id=medico.id if medico else None,
-                    tm_id=tm.id if tm else None,
-                    tp_id=tp.id if tp else None,
-                    secretaria_id=secretaria.id if secretaria else None,
-                    observacion=str(row.get('Observación', '')) if pd.notna(row.get('Observación')) else None
-                )
-                db.add(examen_tac)
-                
-                resultados["TAC"]["importados"] += 1
-                
-            except Exception as e:
-                resultados["TAC"]["errores"] += 1
-                resultados["TAC"]["errores_detalle"].append(f"Fila {idx+2}: {str(e)}")
-                continue
-        
-        # Importar RX (similar estructura)
-        for idx, row in df_rx.iterrows():
-            resultados["RX"]["procesados"] += 1
-            try:
-                if pd.isna(row.get('Fecha Real.')) or pd.isna(row.get('Paciente RUT')):
-                    resultados["RX"]["errores"] += 1
-                    resultados["RX"]["errores_detalle"].append(f"Fila {idx+2}: Faltan datos obligatorios")
-                    continue
-                
-                fecha_realizacion = pd.to_datetime(row['Fecha Real.']).date()
-                rut_paciente = str(row['Paciente RUT']).strip()
-                
-                if es_duplicado("RX", fecha_realizacion, rut_paciente, str(row.get('Examen Específico', ''))):
-                    resultados["RX"]["duplicados"] += 1
-                    continue
-                
-                paciente = db.query(Paciente).filter(Paciente.rut == rut_paciente).first()
-                if not paciente:
-                    paciente = Paciente(
-                        rut=rut_paciente,
-                        nombre_completo=str(row.get('Paciente Nombre', 'Sin nombre'))
-                    )
-                    db.add(paciente)
-                    db.flush()
-                
-                prevision = db.query(Prevision).filter(
-                    Prevision.nombre == str(row.get('Previsión', ''))
-                ).first() if pd.notna(row.get('Previsión')) else None
-                
-                procedencia = db.query(Procedencia).filter(
-                    Procedencia.nombre == str(row.get('Procedencia', ''))
-                ).first() if pd.notna(row.get('Procedencia')) else None
-                
-                codigo_mai = db.query(CodigoMAI).filter(
-                    CodigoMAI.codigo == str(row.get('Código', '')),
-                    CodigoMAI.tipo_examen == "RX"
-                ).first() if pd.notna(row.get('Código')) else None
-                
-                examen_especifico = db.query(ExamenEspecifico).filter(
-                    ExamenEspecifico.nombre == str(row.get('Examen Específico', '')),
-                    ExamenEspecifico.tipo_examen == "RX"
-                ).first() if pd.notna(row.get('Examen Específico')) else None
-                
-                examen_base = ExamenBase(
-                    tipo_examen="RX",
-                    fecha_realizacion=fecha_realizacion,
-                    atencion=str(row.get('Atención', 'Abierta')),
-                    prevision_id=prevision.id if prevision else None,
-                    procedencia_id=procedencia.id if procedencia else None,
-                    paciente_id=paciente.id,
-                    codigo_mai_id=codigo_mai.id if codigo_mai else None,
-                    examen_especifico_id=examen_especifico.id if examen_especifico else None,
-                    contrato=str(row.get('Contrato', '')) if pd.notna(row.get('Contrato')) else None,
+                    codigo_mai_id=codigo_mai.id,
+                    examen_especifico_id=examen_especifico.id,
+                    contrato=contrato,
                     mes_realizacion=fecha_realizacion.month,
                     anio_realizacion=fecha_realizacion.year,
                     created_by=current_user.id,
@@ -870,13 +1060,170 @@ async def importar_excel_respaldo(
                 db.add(examen_base)
                 db.flush()
                 
-                tm_tp = db.query(PersonalMedico).filter(
-                    PersonalMedico.nombre == str(row.get('Realizado por', ''))
-                ).first() if pd.notna(row.get('Realizado por')) else None
+                # --- Parsear edad ---
+                edad = None
+                if pd.notna(row.get('Edad')):
+                    try:
+                        edad = int(row['Edad'])
+                    except:
+                        pass
                 
+                # --- Parsear VFGE y Premedicado ---
+                vfge = str(row.get('VFGE', '')).strip() if pd.notna(row.get('VFGE')) else None
+                premedicado = None
+                if pd.notna(row.get('Premedicado')):
+                    ok, premedicado, _ = parsear_boolean(row['Premedicado'], 'Premedicado')
+                
+                # --- Crear ExamenTAC ---
+                examen_tac = ExamenTAC(
+                    examen_base_id=examen_base.id,
+                    fecha_solicitud=fecha_solicitud,
+                    hora_realizacion=hora,
+                    fecha_nacimiento=paciente.fecha_nacimiento,
+                    edad=edad,
+                    externo=str(row.get('Externo', '')).strip() if pd.notna(row.get('Externo')) else None,
+                    cod_acv=cod_acv,
+                    ges=ges,
+                    medio_contraste=medio_contraste,
+                    vfge=vfge,
+                    premedicado=premedicado,
+                    diagnostico_clinico_id=diagnostico.id if diagnostico else None,
+                    medico_solicitante_id=medico.id if medico else None,
+                    tm_id=tm.id if tm else None,
+                    tp_id=tp.id if tp else None,
+                    secretaria_id=secretaria.id if secretaria else None,
+                    observacion=str(row.get('Observación', '')).strip() if pd.notna(row.get('Observación')) else None
+                )
+                db.add(examen_tac)
+                
+                resultados["TAC"]["importados"] += 1
+                
+            except Exception as e:
+                resultados["TAC"]["errores"] += 1
+                
+                # Agregar fila a lista de errores
+                fila_error = row.to_dict()
+                fila_error['FILA'] = fila_num
+                fila_error['ERROR'] = error_msg if error_msg else str(e)
+                resultados["TAC"]["filas_error"].append(fila_error)
+                
+                continue
+        
+        # ============================================
+        # 5. PROCESAR RX
+        # ============================================
+        for idx, row in df_rx.iterrows():
+            resultados["RX"]["procesados"] += 1
+            fila_num = idx + 2
+            error_msg = ""
+            
+            try:
+                # --- Validar campos obligatorios ---
+                if pd.isna(row.get('Fecha')):
+                    error_msg = "Fecha es obligatoria"
+                    raise ValueError(error_msg)
+                
+                if pd.isna(row.get('RUT')):
+                    error_msg = "RUT es obligatorio"
+                    raise ValueError(error_msg)
+                
+                if pd.isna(row.get('Nombre')):
+                    error_msg = "Nombre es obligatorio"
+                    raise ValueError(error_msg)
+                
+                # --- Parsear fecha ---
+                ok, fecha_realizacion, err = parsear_fecha(row['Fecha'])
+                if not ok:
+                    error_msg = err
+                    raise ValueError(error_msg)
+                
+                # --- Validar RUT ---
+                try:
+                    rut_paciente = limpiar_rut(str(row['RUT']))
+                except:
+                    error_msg = f"RUT inválido: {row['RUT']}"
+                    raise ValueError(error_msg)
+                
+                # --- Validar campos obligatorios ---
+                codigo_str = str(row.get('Código', '')).strip() if pd.notna(row.get('Código')) else ''
+                examen_str = str(row.get('Examen', '')).strip() if pd.notna(row.get('Examen')) else ''
+                
+                if not codigo_str:
+                    error_msg = "Código MAI es obligatorio"
+                    raise ValueError(error_msg)
+                
+                if not examen_str:
+                    error_msg = "Examen Específico es obligatorio"
+                    raise ValueError(error_msg)
+                
+                # --- Verificar duplicado ---
+                if verificar_duplicado("RX", fecha_realizacion, rut_paciente, codigo_str, examen_str):
+                    resultados["RX"]["duplicados"] += 1
+                    continue
+                
+                # --- Validar Atención ---
+                ok, atencion = validar_atencion(row.get('Atención'))
+                if not ok:
+                    error_msg = atencion
+                    raise ValueError(error_msg)
+                
+                # --- Validar Contrato ---
+                ok, contrato = validar_contrato(row.get('Contrato'))
+                if not ok:
+                    error_msg = contrato
+                    raise ValueError(error_msg)
+                
+                # --- Parsear Hora ---
+                ok, hora, err = parsear_hora(row.get('Hora'))
+                if not ok:
+                    error_msg = f"Hora {err}"
+                    raise ValueError(error_msg)
+                
+                # --- Buscar o crear Paciente ---
+                paciente = db.query(Paciente).filter(Paciente.rut == rut_paciente).first()
+                if not paciente:
+                    paciente = Paciente(
+                        rut=rut_paciente,
+                        nombre_completo=str(row['Nombre']).strip()
+                    )
+                    db.add(paciente)
+                    db.flush()
+                
+                # --- Buscar/crear catálogos ---
+                prevision = obtener_o_crear_prevision(row.get('Previsión'))
+                procedencia = obtener_o_crear_procedencia(row.get('Procedencia'))
+                
+                codigo_mai = obtener_codigo_mai(codigo_str, "RX")
+                if not codigo_mai:
+                    error_msg = f"Código MAI '{codigo_str}' no existe en el sistema"
+                    raise ValueError(error_msg)
+                
+                examen_especifico = obtener_o_crear_examen_especifico(examen_str, "RX")
+                tm_tp = obtener_o_crear_personal(row.get('Realizado por'), 'GENERAL')
+                
+                # --- Crear ExamenBase ---
+                examen_base = ExamenBase(
+                    tipo_examen="RX",
+                    fecha_realizacion=fecha_realizacion,
+                    atencion=atencion,
+                    prevision_id=prevision.id if prevision else None,
+                    procedencia_id=procedencia.id if procedencia else None,
+                    paciente_id=paciente.id,
+                    codigo_mai_id=codigo_mai.id,
+                    examen_especifico_id=examen_especifico.id,
+                    contrato=contrato,
+                    mes_realizacion=fecha_realizacion.month,
+                    anio_realizacion=fecha_realizacion.year,
+                    created_by=current_user.id,
+                    created_at=dt.utcnow()
+                )
+                db.add(examen_base)
+                db.flush()
+                
+                # --- Crear ExamenRX ---
                 examen_rx = ExamenRX(
                     examen_base_id=examen_base.id,
-                    hora_realizacion=pd.to_datetime(str(row['Hora']), format='%H:%M:%S', errors='ignore').time() if pd.notna(row.get('Hora')) else None,
+                    hora_realizacion=hora,
                     tm_tp_id=tm_tp.id if tm_tp else None
                 )
                 db.add(examen_rx)
@@ -885,62 +1232,113 @@ async def importar_excel_respaldo(
                 
             except Exception as e:
                 resultados["RX"]["errores"] += 1
-                resultados["RX"]["errores_detalle"].append(f"Fila {idx+2}: {str(e)}")
+                
+                fila_error = row.to_dict()
+                fila_error['FILA'] = fila_num
+                fila_error['ERROR'] = error_msg if error_msg else str(e)
+                resultados["RX"]["filas_error"].append(fila_error)
+                
                 continue
         
-        # Importar ECO (similar estructura)
+        # ============================================
+        # 6. PROCESAR ECO
+        # ============================================
         for idx, row in df_eco.iterrows():
             resultados["ECO"]["procesados"] += 1
+            fila_num = idx + 2
+            error_msg = ""
+            
             try:
-                if pd.isna(row.get('Fecha Real.')) or pd.isna(row.get('Paciente RUT')):
-                    resultados["ECO"]["errores"] += 1
-                    resultados["ECO"]["errores_detalle"].append(f"Fila {idx+2}: Faltan datos obligatorios")
-                    continue
+                # --- Validar campos obligatorios ---
+                if pd.isna(row.get('Fecha')):
+                    error_msg = "Fecha es obligatoria"
+                    raise ValueError(error_msg)
                 
-                fecha_realizacion = pd.to_datetime(row['Fecha Real.']).date()
-                rut_paciente = str(row['Paciente RUT']).strip()
+                if pd.isna(row.get('RUT')):
+                    error_msg = "RUT es obligatorio"
+                    raise ValueError(error_msg)
                 
-                if es_duplicado("ECO", fecha_realizacion, rut_paciente, str(row.get('Examen Específico', ''))):
+                if pd.isna(row.get('Nombre')):
+                    error_msg = "Nombre es obligatorio"
+                    raise ValueError(error_msg)
+                
+                # --- Parsear fecha ---
+                ok, fecha_realizacion, err = parsear_fecha(row['Fecha'])
+                if not ok:
+                    error_msg = err
+                    raise ValueError(error_msg)
+                
+                # --- Validar RUT ---
+                try:
+                    rut_paciente = limpiar_rut(str(row['RUT']))
+                except:
+                    error_msg = f"RUT inválido: {row['RUT']}"
+                    raise ValueError(error_msg)
+                
+                # --- Validar campos obligatorios ---
+                codigo_str = str(row.get('Código', '')).strip() if pd.notna(row.get('Código')) else ''
+                examen_str = str(row.get('Examen', '')).strip() if pd.notna(row.get('Examen')) else ''
+                
+                if not codigo_str:
+                    error_msg = "Código MAI es obligatorio"
+                    raise ValueError(error_msg)
+                
+                if not examen_str:
+                    error_msg = "Examen Específico es obligatorio"
+                    raise ValueError(error_msg)
+                
+                # --- Verificar duplicado ---
+                if verificar_duplicado("ECO", fecha_realizacion, rut_paciente, codigo_str, examen_str):
                     resultados["ECO"]["duplicados"] += 1
                     continue
                 
+                # --- Validar Atención ---
+                ok, atencion = validar_atencion(row.get('Atención'))
+                if not ok:
+                    error_msg = atencion
+                    raise ValueError(error_msg)
+                
+                # --- Validar Contrato ---
+                ok, contrato = validar_contrato(row.get('Contrato'))
+                if not ok:
+                    error_msg = contrato
+                    raise ValueError(error_msg)
+                
+                # --- Buscar o crear Paciente ---
                 paciente = db.query(Paciente).filter(Paciente.rut == rut_paciente).first()
                 if not paciente:
                     paciente = Paciente(
                         rut=rut_paciente,
-                        nombre_completo=str(row.get('Paciente Nombre', 'Sin nombre'))
+                        nombre_completo=str(row['Nombre']).strip()
                     )
                     db.add(paciente)
                     db.flush()
                 
-                prevision = db.query(Prevision).filter(
-                    Prevision.nombre == str(row.get('Previsión', ''))
-                ).first() if pd.notna(row.get('Previsión')) else None
+                # --- Buscar/crear catálogos ---
+                prevision = obtener_o_crear_prevision(row.get('Previsión'))
+                procedencia = obtener_o_crear_procedencia(row.get('Procedencia'))
                 
-                procedencia = db.query(Procedencia).filter(
-                    Procedencia.nombre == str(row.get('Procedencia', ''))
-                ).first() if pd.notna(row.get('Procedencia')) else None
+                codigo_mai = obtener_codigo_mai(codigo_str, "ECO")
+                if not codigo_mai:
+                    error_msg = f"Código MAI '{codigo_str}' no existe en el sistema"
+                    raise ValueError(error_msg)
                 
-                codigo_mai = db.query(CodigoMAI).filter(
-                    CodigoMAI.codigo == str(row.get('Código', '')),
-                    CodigoMAI.tipo_examen == "ECO"
-                ).first() if pd.notna(row.get('Código')) else None
+                examen_especifico = obtener_o_crear_examen_especifico(examen_str, "ECO")
+                diagnostico = obtener_o_crear_diagnostico(row.get('Diagnóstico'))
+                realizado = obtener_o_crear_personal(row.get('Realizado'), 'GENERAL')
+                transcribe = obtener_o_crear_personal(row.get('Transcribe'), 'GENERAL')
                 
-                examen_especifico = db.query(ExamenEspecifico).filter(
-                    ExamenEspecifico.nombre == str(row.get('Examen Específico', '')),
-                    ExamenEspecifico.tipo_examen == "ECO"
-                ).first() if pd.notna(row.get('Examen Específico')) else None
-                
+                # --- Crear ExamenBase ---
                 examen_base = ExamenBase(
                     tipo_examen="ECO",
                     fecha_realizacion=fecha_realizacion,
-                    atencion=str(row.get('Atención', 'Abierta')),
+                    atencion=atencion,
                     prevision_id=prevision.id if prevision else None,
                     procedencia_id=procedencia.id if procedencia else None,
                     paciente_id=paciente.id,
-                    codigo_mai_id=codigo_mai.id if codigo_mai else None,
-                    examen_especifico_id=examen_especifico.id if examen_especifico else None,
-                    contrato=str(row.get('Contrato', '')) if pd.notna(row.get('Contrato')) else None,
+                    codigo_mai_id=codigo_mai.id,
+                    examen_especifico_id=examen_especifico.id,
+                    contrato=contrato,
                     mes_realizacion=fecha_realizacion.month,
                     anio_realizacion=fecha_realizacion.year,
                     created_by=current_user.id,
@@ -949,18 +1347,7 @@ async def importar_excel_respaldo(
                 db.add(examen_base)
                 db.flush()
                 
-                diagnostico = db.query(Diagnostico).filter(
-                    Diagnostico.nombre == str(row.get('Diagnóstico', ''))
-                ).first() if pd.notna(row.get('Diagnóstico')) else None
-                
-                realizado = db.query(PersonalMedico).filter(
-                    PersonalMedico.nombre == str(row.get('Realizado', ''))
-                ).first() if pd.notna(row.get('Realizado')) else None
-                
-                transcribe = db.query(PersonalMedico).filter(
-                    PersonalMedico.nombre == str(row.get('Transcribe', ''))
-                ).first() if pd.notna(row.get('Transcribe')) else None
-                
+                # --- Crear ExamenECO ---
                 examen_eco = ExamenECO(
                     examen_base_id=examen_base.id,
                     diagnostico_id=diagnostico.id if diagnostico else None,
@@ -973,20 +1360,146 @@ async def importar_excel_respaldo(
                 
             except Exception as e:
                 resultados["ECO"]["errores"] += 1
-                resultados["ECO"]["errores_detalle"].append(f"Fila {idx+2}: {str(e)}")
+                
+                fila_error = row.to_dict()
+                fila_error['FILA'] = fila_num
+                fila_error['ERROR'] = error_msg if error_msg else str(e)
+                resultados["ECO"]["filas_error"].append(fila_error)
+                
                 continue
         
+        # ============================================
+        # 7. COMMIT DE TRANSACCIÓN
+        # ============================================
         db.commit()
         
-        # Preparar mensaje de respuesta
-        mensaje = f"Importación completada.\n"
-        mensaje += f"TAC: {resultados['TAC']['importados']} importados, {resultados['TAC']['duplicados']} duplicados, {resultados['TAC']['errores']} errores.\n"
-        mensaje += f"RX: {resultados['RX']['importados']} importados, {resultados['RX']['duplicados']} duplicados, {resultados['RX']['errores']} errores.\n"
-        mensaje += f"ECO: {resultados['ECO']['importados']} importados, {resultados['ECO']['duplicados']} duplicados, {resultados['ECO']['errores']} errores."
+        # ============================================
+        # 8. GENERAR EXCEL DE ERRORES (SI HAY)
+        # ============================================
+        excel_errores = None
+        total_errores = resultados["TAC"]["errores"] + resultados["RX"]["errores"] + resultados["ECO"]["errores"]
         
+        if total_errores > 0:
+            wb_errores = Workbook()
+            wb_errores.remove(wb_errores.active)
+            
+            # Estilos
+            error_fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+            header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+            header_font = Font(bold=True, color="FFFFFF")
+            
+            # --- Hoja TAC Errores ---
+            if resultados["TAC"]["filas_error"]:
+                ws_tac_err = wb_errores.create_sheet(title="TAC - Errores")
+                
+                # Headers
+                if resultados["TAC"]["filas_error"]:
+                    headers = ['FILA', 'ERROR'] + list(resultados["TAC"]["filas_error"][0].keys())
+                    headers = [h for h in headers if h not in ['FILA', 'ERROR']] # Remover duplicados
+                    headers = ['FILA', 'ERROR'] + headers
+                    ws_tac_err.append(headers)
+                    
+                    # Estilo header
+                    for cell in ws_tac_err[1]:
+                        cell.fill = header_fill
+                        cell.font = header_font
+                    
+                    # Datos
+                    for fila_err in resultados["TAC"]["filas_error"]:
+                        row_data = [fila_err.get('FILA', ''), fila_err.get('ERROR', '')]
+                        for key in headers[2:]:  # Skip FILA y ERROR
+                            row_data.append(fila_err.get(key, ''))
+                        ws_tac_err.append(row_data)
+                        
+                        # Marcar fila de error en rojo
+                        for cell in ws_tac_err[ws_tac_err.max_row]:
+                            if cell.column == 2:  # Columna ERROR
+                                cell.fill = error_fill
+                                cell.font = Font(color="FFFFFF")
+            
+            # --- Hoja RX Errores ---
+            if resultados["RX"]["filas_error"]:
+                ws_rx_err = wb_errores.create_sheet(title="RX - Errores")
+                
+                if resultados["RX"]["filas_error"]:
+                    headers = ['FILA', 'ERROR'] + list(resultados["RX"]["filas_error"][0].keys())
+                    headers = [h for h in headers if h not in ['FILA', 'ERROR']]
+                    headers = ['FILA', 'ERROR'] + headers
+                    ws_rx_err.append(headers)
+                    
+                    for cell in ws_rx_err[1]:
+                        cell.fill = header_fill
+                        cell.font = header_font
+                    
+                    for fila_err in resultados["RX"]["filas_error"]:
+                        row_data = [fila_err.get('FILA', ''), fila_err.get('ERROR', '')]
+                        for key in headers[2:]:
+                            row_data.append(fila_err.get(key, ''))
+                        ws_rx_err.append(row_data)
+                        
+                        for cell in ws_rx_err[ws_rx_err.max_row]:
+                            if cell.column == 2:
+                                cell.fill = error_fill
+                                cell.font = Font(color="FFFFFF")
+            
+            # --- Hoja ECO Errores ---
+            if resultados["ECO"]["filas_error"]:
+                ws_eco_err = wb_errores.create_sheet(title="ECO - Errores")
+                
+                if resultados["ECO"]["filas_error"]:
+                    headers = ['FILA', 'ERROR'] + list(resultados["ECO"]["filas_error"][0].keys())
+                    headers = [h for h in headers if h not in ['FILA', 'ERROR']]
+                    headers = ['FILA', 'ERROR'] + headers
+                    ws_eco_err.append(headers)
+                    
+                    for cell in ws_eco_err[1]:
+                        cell.fill = header_fill
+                        cell.font = header_font
+                    
+                    for fila_err in resultados["ECO"]["filas_error"]:
+                        row_data = [fila_err.get('FILA', ''), fila_err.get('ERROR', '')]
+                        for key in headers[2:]:
+                            row_data.append(fila_err.get(key, ''))
+                        ws_eco_err.append(row_data)
+                        
+                        for cell in ws_eco_err[ws_eco_err.max_row]:
+                            if cell.column == 2:
+                                cell.fill = error_fill
+                                cell.font = Font(color="FFFFFF")
+            
+            # Guardar en memoria
+            output_errores = BytesIO()
+            wb_errores.save(output_errores)
+            output_errores.seek(0)
+            excel_errores = output_errores.getvalue()
+        
+        # ============================================
+        # 9. PREPARAR RESPUESTA
+        # ============================================
         return {
-            "message": mensaje,
-            "resultados": resultados
+            "success": True,
+            "resultados": {
+                "TAC": {
+                    "procesados": resultados["TAC"]["procesados"],
+                    "importados": resultados["TAC"]["importados"],
+                    "duplicados": resultados["TAC"]["duplicados"],
+                    "errores": resultados["TAC"]["errores"]
+                },
+                "RX": {
+                    "procesados": resultados["RX"]["procesados"],
+                    "importados": resultados["RX"]["importados"],
+                    "duplicados": resultados["RX"]["duplicados"],
+                    "errores": resultados["RX"]["errores"]
+                },
+                "ECO": {
+                    "procesados": resultados["ECO"]["procesados"],
+                    "importados": resultados["ECO"]["importados"],
+                    "duplicados": resultados["ECO"]["duplicados"],
+                    "errores": resultados["ECO"]["errores"]
+                }
+            },
+            "tiene_errores": total_errores > 0,
+            "excel_errores_base64": excel_errores.hex() if excel_errores else None
         }
         
     except HTTPException:
