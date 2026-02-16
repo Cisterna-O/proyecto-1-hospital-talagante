@@ -68,7 +68,8 @@ INSERT INTO previsiones (nombre) VALUES
 ('PARTICULAR'),
 ('PRAIS'),
 ('PREVISIÓN PROVISORIA'),
-('SIN PREVISIÓN');
+('SIN PREVISIÓN'),
+('EJERCITO DE CHILE');
 
 -- Procedencias
 CREATE TABLE procedencias (
@@ -179,6 +180,12 @@ INSERT INTO codigos_mai (tipo_examen, codigo, descripcion) VALUES
 ('RX', '401052', 'RX DE PELVIS, CADERA O COXOFEMORAL, PROYECCIONES ESPECIALES'),
 ('RX', '401053', 'RX DE SACROCOXIS O ARTICULACIONES SACROILÍACAS'),
 ('RX', '401054', 'RX DE BRAZO, ANTEBRAZO, CODO, MUÑECA, MANO, DEDOS, PIE (FRONTAL Y LATERAL)'),
+('RX', '401055', 'RADIOGRAFÍA DE CLAVÍCULA'),
+('RX', '401056', 'RADIOGRAFÍA EDAD OSEA: CARPO Y MANO'),
+('RX', '401058', 'ESTUDIO RADIOLOGICO DE ESCAFOIDES'),
+('RX', '401059', 'ESTUDIO RADIOLOGICO DE MUÑECA O TOBILLO FRONTAL LATERAL Y OBLICUAS'),
+('RX', '401060', 'RADIOGRAFÍA DE HOMBRO, FÉMUR, RODILLA, PIERNA, COSTILLA O ESTERNÓN FRONTAL Y LATERAL'),
+('RX', '401062', 'RADIOFRAFÍA DE PROYECCIONES ESPECIALES OBLICUOAS U OTRAS EN HOMBRO, BRAZO, CODO, RODILLA, ROTULAS, SESAMOIDEOS, AXIAL DE AMBAS ROTILAS O SIMILARES'),
 ('RX', '401063', 'RX DE TÚNEL INTERCONDÍLEO O RADIO-CARPIANO'),
 ('RX', '401064', 'APOYO FLUOROSCÓPICO A PROCEDIMIENTOS INTRAOPERATORIOS'),
 ('RX', '401070', 'RX DE TÓRAX FRONTAL Y LATERAL'),
@@ -679,6 +686,83 @@ CREATE TABLE examenes_tac (
     secretaria_id INTEGER REFERENCES personal_medico(id),
     observacion TEXT
 );
+
+-- TM (Técnicos en Radiología)
+INSERT INTO personal_medico (nombre, tipo) VALUES
+('Benjamín Siñiga Marambio', 'TM'),
+('Carmen Flores Cartagena', 'TM'),
+('Catalina Millán Espinoza', 'TM'),
+('David Puyó Vera', 'TM'),
+('Dra. Francisca Aliaga Plaza', 'TM'),
+('Gerald Sepúlveda Vásquez', 'TM'),
+('Gonzalo Rojas Nuñez', 'TM'),
+('Greisy Zambrano Vidal', 'TM'),
+('Jorge Oyarzo Guzmán', 'TM'),
+('Juan Catalán Jamett', 'TM'),
+('Natalia Ulloa Leiva', 'TM'),
+('Pablo Montano Ruiz', 'TM'),
+('Ricardo Romero Cisternas', 'TM'),
+('Sebastián Cuevas Salazar', 'TM'),
+('Carolina Huerta Villarroel', 'TM'),
+('Cristina Araya González', ''),
+('Fernanda Nogué Duran', 'TM'),
+('Héctor Alvarado Urrutia', 'TM'),
+('Héctor Galaz Quintrileo', 'TM'),
+('Joselyn Riquelme Pérez', 'TM'),
+('Karla Duboy Díaz', 'TM'),
+('Leonardo Salas Morales', 'TM'),
+('Maria Santibañez Arias', 'TM'),
+('Marisol Altamirano Carrasco', 'TM'),
+('Nayareth Saravia Olivares', 'TM'),
+('Nicole Muñoz Osorio', 'TM'),
+('Paolo Turrinetti Armijo', 'TM'),
+('Paulina Bustos Espinoza', 'TM'),
+('Scarlette Ocares Tello', 'TM'),
+('Tania Bravo Pezoa', 'TM');
+
+-- TP (Técnicos Paramédicos)
+INSERT INTO personal_medico (nombre, tipo) VALUES
+('Carolina Huerta Villarroel', 'TP'),
+('Cristina Araya González', 'TP'),
+('Fernanda Nogué Duran', 'TP'),
+('Héctor Alvarado Urrutia', 'TP'),
+('Héctor Galaz Quintrileo', 'TP'),
+('Joselyn Riquelme Pérez', 'TP'),
+('Karla Duboy Díaz', 'TP'),
+('Leonardo Salas Morales', 'TP'),
+('Maria Santibañez Arias', 'TP'),
+('Marisol Altamirano Carrasco', 'TP'),
+('Nayareth Saravia Olivares', 'TP'),
+('Nicole Muñoz Osorio', 'TP'),
+('Paolo Turrinetti Armijo', 'TP'),
+('Paulina Bustos Espinoza', 'TP'),
+('Scarlette Ocares Tello', 'TP'),
+('Tania Bravo Pezoa', 'TP');
+
+-- Secretarias
+INSERT INTO personal_medico (nombre, tipo) VALUES
+('Daniela Araya', 'SECRETARIA'),
+('Dominique Romero', 'SECRETARIA'),
+('Yuliza Troncoso ', 'SECRETARIA');
+
+-- Personal General
+INSERT INTO personal_medico (nombre, tipo) VALUES
+('Carolina Huerta Villarroel', 'GENERAL'),
+('Cristina Araya González', 'GENERAL'),
+('Fernanda Nogué Duran', 'GENERAL'),
+('Héctor Alvarado Urrutia', 'GENERAL'),
+('Héctor Galaz Quintrileo', 'GENERAL'),
+('Joselyn Riquelme Pérez', 'GENERAL'),
+('Karla Duboy Díaz', 'GENERAL'),
+('Leonardo Salas Morales', 'GENERAL'),
+('Maria Santibañez Arias', 'GENERAL'),
+('Marisol Altamirano Carrasco', 'GENERAL'),
+('Nayareth Saravia Olivares', 'GENERAL'),
+('Nicole Muñoz Osorio', 'GENERAL'),
+('Paolo Turrinetti Armijo', 'GENERAL'),
+('Paulina Bustos Espinoza', 'GENERAL'),
+('Scarlette Ocares Tello', 'GENERAL'),
+('Tania Bravo Pezoa', 'GENERAL');
 
 CREATE INDEX idx_tac_examen ON examenes_tac(examen_base_id);
 
